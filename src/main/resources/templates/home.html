@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AFYACHECK - Know Your STI Status</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #00b894 0%, #00a085 50%, #0984e3 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Notification Bar */
+        .notification-bar {
+            background: linear-gradient(45deg, #e17055, #fd79a8);
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .notification-bar .close-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+        }
+
+        .logo {
+            font-size: 2.2rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00b894, #0984e3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-links {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #2c3e50;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: #00b894;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -5px;
+            left: 0;
+            background: linear-gradient(45deg, #00b894, #0984e3);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .emergency-btn {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white !important;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .emergency-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, rgba(0, 184, 148, 0.9) 0%, rgba(0, 160, 133, 0.9) 50%, rgba(9, 132, 227, 0.9) 100%);
+            color: white;
+            text-align: center;
+            padding: 140px 0 100px;
+            margin-top: 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100"><path fill="rgba(255,255,255,0.1)" d="M0,50 Q250,0 500,50 T1000,50 L1000,100 L0,100 Z"></path></svg>') repeat-x;
+            background-size: 1000px 100px;
+            animation: wave 15s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(-50px); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 1s ease;
+        }
+
+        .hero .subtitle {
+            font-size: 1.4rem;
+            margin-bottom: 2.5rem;
+            opacity: 0.95;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            animation: fadeInUp 1s ease 0.2s both;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeInUp 1s ease 0.4s both;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(45deg, #fd79a8, #e84393);
+            color: white;
+            padding: 18px 45px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(253, 121, 168, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.6s;
+        }
+
+        .cta-button:hover::before {
+            left: 100%;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(253, 121, 168, 0.4);
+        }
+
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .secondary-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-3px);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Trust Indicators */
+        .trust-indicators {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px 0;
+            text-align: center;
+        }
+
+        .trust-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .trust-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #00b894;
+            font-weight: 600;
+        }
+
+        .trust-icon {
+            font-size: 1.5rem;
+        }
+
+        /* Main Content */
+        main {
+            background: white;
+            margin: 0;
+        }
+
+        /* Stats Section */
+        .stats {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+        }
+
+        .stat-item h3 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .stat-item p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* About Section */
+        .about {
+            padding: 100px 0;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+
+        .about h2 {
+            text-align: center;
+            font-size: 2.8rem;
+            margin-bottom: 3rem;
+            color: #2c3e50;
+            position: relative;
+        }
+
+        .about h2::after {
+            content: '';
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(45deg, #00b894, #0984e3);
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+
+        .about-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 3rem;
+            margin-top: 4rem;
+        }
+
+        .about-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .about-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(45deg, #00b894, #0984e3);
+        }
+
+        .about-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .about-card h3 {
+            color: #00b894;
+            margin-bottom: 1.5rem;
+            font-size: 1.6rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 100px 0;
+            background: white;
+        }
+
+        .how-it-works h2 {
+            text-align: center;
+            font-size: 2.8rem;
+            margin-bottom: 4rem;
+            color: #2c3e50;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            position: relative;
+        }
+
+        .step {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #00b894, #0984e3);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0 auto 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 184, 148, 0.3);
+        }
+
+        .step h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+        }
+
+        /* Testimonials */
+        .testimonials {
+            padding: 100px 0;
+            background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+            color: white;
+        }
+
+        .testimonials h2 {
+            text-align: center;
+            font-size: 2.8rem;
+            margin-bottom: 4rem;
+            color: white;
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .testimonial {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            border-radius: 20px;
+            text-align: center;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .testimonial:hover {
+            transform: translateY(-5px);
+        }
+
+        .testimonial::before {
+            content: '"';
+            font-size: 4rem;
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            opacity: 0.3;
+        }
+
+        .testimonial p {
+            font-style: italic;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            line-height: 1.7;
+        }
+
+        .testimonial-author {
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .rating {
+            color: #fdcb6e;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        /* FAQ Section */
+        .faq {
+            padding: 100px 0;
+            background: #f8f9fa;
+        }
+
+        .faq h2 {
+            text-align: center;
+            font-size: 2.8rem;
+            margin-bottom: 4rem;
+            color: #2c3e50;
+        }
+
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            background: white;
+            margin-bottom: 1.5rem;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .faq-item:hover {
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .faq-question {
+            background: linear-gradient(45deg, #00b894, #0984e3);
+            color: white;
+            padding: 2rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .faq-question:hover {
+            background: linear-gradient(45deg, #00a085, #0770d1);
+        }
+
+        .faq-toggle {
+            font-size: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .faq-toggle.active {
+            transform: rotate(45deg);
+        }
+
+        .faq-answer {
+            padding: 0 2rem;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            line-height: 1.7;
+        }
+
+        .faq-answer.active {
+            padding: 2rem;
+            max-height: 500px;
+        }
+
+        /* Newsletter Section */
+        .newsletter {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .newsletter h3 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .newsletter-form {
+            max-width: 500px;
+            margin: 0 auto;
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .newsletter-form input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+        }
+
+        .newsletter-form button {
+            background: linear-gradient(45deg, #fd79a8, #e84393);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .newsletter-form button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(253, 121, 168, 0.3);
+        }
+
+        /* Footer */
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 4rem 0 2rem;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-section h3 {
+            margin-bottom: 1.5rem;
+            color: #00b894;
+            font-size: 1.3rem;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-section ul li a {
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section ul li a:hover {
+            color: #00b894;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .social-link {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, #00b894, #0984e3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.3s ease;
+        }
+
+        .social-link:hover {
+            transform: translateY(-3px);
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #34495e;
+            padding-top: 2rem;
+            text-align: center;
+            color: #bdc3c7;
+        }
+
+        /* Back to Top Button */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(45deg, #00b894, #0984e3);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(0, 184, 148, 0.3);
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(0, 184, 148, 0.4);
+        }
+
+        /* Mobile Menu */
+        .mobile-menu {
+            display: none;
+        }
+
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            top: 80px;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(15px);
+            padding: 2rem;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            z-index: 999;
+        }
+
+        .mobile-nav.active {
+            display: block;
+        }
+
+        .mobile-nav ul {
+            list-style: none;
+        }
+
+        .mobile-nav ul li {
+            margin-bottom: 1rem;
+        }
+
+        .mobile-nav ul li a {
+            color: #2c3e50;
+            text-decoration: none;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero .subtitle {
+                font-size: 1.1rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-menu {
+                display: block;
+                background: none;
+                border: none;
+                font-size: 1.8rem;
+                color: #2c3e50;
+                cursor: pointer;
+            }
+
+            .newsletter-form {
+                flex-direction: column;
+            }
+
+            .steps::before {
+                display: none;
+            }
+
+            .about-grid,
+            .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #00b894, #0984e3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+<!-- Loading Screen -->
+<div class="loading" id="loading">
+    <div class="spinner"></div>
+</div>
+
+<!-- Notification Bar -->
+<div class="notification-bar" id="notificationBar">
+    🔒 Your privacy is protected - All assessments are completely confidential
+    <button class="close-btn" onclick="closeNotification()">×</button>
+</div>
+
+<header>
+    <nav class="container">
+        <div class="logo">AFYACHECK</div>
+        <ul class="nav-links">
+            <li><a href="#home">Home</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#testimonials">Testimonials</a></li>
+            <li><a href="#faq">FAQ</a></li>
+            <li><a href="#contact">Contact</a></li>
+            <li><a href="#emergency" class="emergency-btn">🚨 Emergency Resources</a></li>
+        </ul>
+        <button class="mobile-menu" onclick="toggleMobileMenu()">☰</button>
+    </nav>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav" id="mobileNav">
+        <ul>
+            <li><a href="#home" onclick="closeMobileMenu()">Home</a></li>
+            <li><a href="#about" onclick="closeMobileMenu()">About</a></li>
+            <li><a href="#how-it-works" onclick="closeMobileMenu()">How It Works</a></li>
+            <li><a href="#testimonials" onclick="closeMobileMenu()">Testimonials</a></li>
+            <li><a href="#faq" onclick="closeMobileMenu()">FAQ</a></li>
+            <li><a href="#contact" onclick="closeMobileMenu()">Contact</a></li>
+            <li><a href="#emergency" class="emergency-btn" onclick="closeMobileMenu()">🚨 Emergency Resources</a></li>
+        </ul>
+    </div>
+</header>
+
+<section class="hero" id="home">
+    <div class="container">
+        <div class="hero-content">
+            <h1>Know Your STI Status</h1>
+            <p class="subtitle">Take our confidential, evidence-based questionnaire to assess your STI risk and receive personalized recommendations for testing and care. Your health, your privacy, your choice.</p>
+            <div class="hero-buttons">
+                <a href="#questionnaire" class="cta-button" id="startAssessment">🔍 Start Free Assessment</a>
+                <a href="#how-it-works" class="cta-button secondary-btn">📋 How It Works</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Trust Indicators -->
+<section class="trust-indicators">
+    <div class="container">
+        <div class="trust-grid">
+            <div class="trust-item">
+                <span class="trust-icon">🔒</span>
+                <span>100% Confidential</span>
+            </div>
+            <div class="trust-item">
+                <span class="trust-icon">⚕️</span>
+                <span>Medical Grade Assessment</span>
+            </div>
+            <div class="trust-item">
+                <span class="trust-icon">📱</span>
+                <span>Mobile Friendly</span>
+            </div>
+            <div class="trust-item">
+                <span class="trust-icon">⚡</span>
+                <span>5-Minute Test</span>
+            </div>
+            <div class="trust-item">
+                <span class="trust-icon">🌍</span>
+                <span>Available 24/7</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats">
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <h3>50K+</h3>
+                <p>Assessments Completed</p>
+            </div>
+            <div class="stat-item">
+                <h3>98%</h3>
+                <p>User Satisfaction</p>
+            </div>
+            <div class="stat-item">
+                <h3>24/7</h3>
+                <p>Available Support</p>
+            </div>
+            <div class="stat-item">
+                <h3>100%</h3>
+                <p>Private & Secure</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<main>
+    <!-- How It Works -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <h2>How AFYACHECK Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Answer Questions</h3>
+                    <p>Complete our confidential 5-minute questionnaire about your sexual health history and risk factors.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Get Assessment</h3>
+                    <p>Receive an immediate, personalized risk assessment based on medical guidelines and your responses.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Find Resources</h3>
+                    <p>Access tailored recommendations for testing centers, healthcare providers, and educational resources.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Take Action</h3>
+                    <p>Follow up with appropriate testing and care based on your personalized recommendations.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="about" id="about">
+        <div class="container">
+            <h2>Why Choose AFYACHECK?</h2>
+            <div class="about-grid">
+                <div class="about-card">
+                    <h3>🔒 Complete Privacy</h3>
+                    <p>Your privacy is our absolute priority. We use end-to-end encryption and never store personal identifying information. All assessments are completely anonymous and confidential.</p>
+                </div>
+                <div class="about-card">
+                    <h3>⚕️ Medical Expertise</h3>
+                    <p>Our questionnaire is developed in consultation with healthcare professionals and follows WHO and CDC guidelines for STI risk assessment and screening protocols.</p>
+                </div>
+                <div class="about-card">
+                    <h3>🎯 Personalized Results</h3>
+                    <p>Receive tailored recommendations based on your unique risk profile, including specific testing suggestions, timeframes, and local healthcare resources.</p>
+                </div>
+                <div class="about-card">
+                    <h3>🏥 Healthcare Network</h3>
+                    <p>Connect with verified, trusted healthcare providers and testing centers in your area. We partner with certified clinics to ensure quality care.</p>
+                </div>
+                <div class="about-card">
+                    <h3>📱 Accessible Design</h3>
+                    <p>Our platform works seamlessly across all devices - smartphone, tablet, or computer. Take the assessment anytime, anywhere, at your own pace.</p>
+                </div>
+                <div class="about-card">
+                    <h3>🌍 Cultural Sensitivity</h3>
+                    <p>We understand the diverse cultural contexts in Kenya and provide culturally appropriate guidance and resources for all users.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="testimonials" id="testimonials">
+        <div class="container">
+            <h2>What Our Users Say</h2>
+            <div class="testimonials-grid">
+                <div class="testimonial">
+                    <div class="rating">⭐⭐⭐⭐⭐</div>
+                    <p>AFYACHECK gave me the confidence to understand my risk level and seek appropriate testing. The process was simple, private, and incredibly helpful. I finally felt in control of my sexual health.</p>
+                    <div class="testimonial-author">- Sarah M., Nairobi</div>
+                </div>
+                <div class="testimonial">
+                    <div class="rating">⭐⭐⭐⭐⭐</div>
+                    <p>I was nervous about STI testing, but this platform helped me understand what I needed and connected me with a supportive local clinic. The staff was professional and non-judgmental.</p>
+                    <div class="testimonial-author">- James K., Mombasa</div>
+                </div>
+                <div class="testimonial">
+                    <div class="rating">⭐⭐⭐⭐⭐</div>
+                    <p>The personalized recommendations were exactly what I needed. As a young person, I appreciated the educational resources and the respectful approach to sexual health.</p>
+                    <div class="testimonial-author">- Maria L., Kisumu</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="faq" id="faq">
+        <div class="container">
+            <h2>Frequently Asked Questions</h2>
+            <div class="faq-container">
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        Is the questionnaire really confidential and secure?
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        Absolutely. We employ bank-level encryption to protect all data transmission. We do not collect any personally identifying information like names, phone numbers, or email addresses. Your responses are processed anonymously and securely, and we never share data with third parties.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        How accurate is the STI risk assessment?
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        Our assessment is based on established medical guidelines from WHO, CDC, and Kenya's Ministry of Health. However, it's important to understand this is a screening tool, not a medical diagnosis. The results help guide you toward appropriate testing and care - only actual STI testing can provide definitive results.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        What happens after I complete the questionnaire?
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        You'll immediately receive a personalized report with your risk assessment, recommended testing timeline, specific tests to consider, local healthcare resources, and educational materials. You can save or print this report for your records or to share with a healthcare provider.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        How long does the assessment take?
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        The questionnaire takes approximately 5-10 minutes to complete. We've designed it to be thorough yet efficient, asking only the most medically relevant questions needed for an accurate risk assessment.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        Can I retake the questionnaire?
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        Yes, you can retake the assessment as often as needed. We recommend retaking it when your circumstances change, after new sexual partners, or as part of regular sexual health monitoring (typically every 3-6 months for sexually active individuals).
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        Do you provide actual STI testing?
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        AFYACHECK provides risk assessment and connects you with healthcare resources, but we do not conduct physical testing. We partner with verified, licensed clinics and laboratories throughout Kenya to help you access appropriate, professional testing services.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        Is this service free to use?
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        Yes, the AFYACHECK questionnaire and risk assessment are completely free. Our mission is to improve sexual health awareness and access to care. While the assessment is free, actual testing at healthcare facilities may have associated costs.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        What if I'm under 18 years old?
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        The questionnaire is available to users of all ages, and we provide age-appropriate guidance. However, we strongly recommend that minors consult with a parent, guardian, or healthcare provider about sexual health concerns and testing. Many clinics offer confidential services for young people.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Newsletter Section -->
+    <section class="newsletter">
+        <div class="container">
+            <h3>Stay Informed About Sexual Health</h3>
+            <p>Get updates on sexual health awareness, new resources, and important health information delivered to your inbox.</p>
+            <form class="newsletter-form" onsubmit="subscribeNewsletter(event)">
+                <input type="email" placeholder="Enter your email address" required>
+                <button type="submit">Subscribe</button>
+            </form>
+        </div>
+    </section>
+</main>
+
+<footer id="contact">
+    <div class="container">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>AFYACHECK</h3>
+                <p>Empowering individuals with confidential STI risk assessments and connecting them to quality healthcare resources across Kenya.</p>
+                <div class="social-links">
+                    <a href="#" class="social-link">📘</a>
+                    <a href="#" class="social-link">🐦</a>
+                    <a href="#" class="social-link">📷</a>
+                    <a href="#" class="social-link">💼</a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="#about">About Us</a></li>
+                    <li><a href="#how-it-works">How It Works</a></li>
+                    <li><a href="#testimonials">Testimonials</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li><a href="#emergency">Emergency Resources</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Resources</h3>
+                <ul>
+                    <li><a href="#">Sexual Health Education</a></li>
+                    <li><a href="#">Testing Centers Directory</a></li>
+                    <li><a href="#">Healthcare Provider Network</a></li>
+                    <li><a href="#">Prevention Guidelines</a></li>
+                    <li><a href="#">Support Groups</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contact & Support</h3>
+                <p>📧 Email: support@afyacheck.co.ke</p>
+                <p>📞 Phone: +254 (0) 700 123 456</p>
+                <p>📍 Address: Nairobi, Kenya</p>
+                <p>🕐 Available: 24/7 Online Support</p>
+            </div>
+            <div class="footer-section">
+                <h3>Emergency Resources</h3>
+                <ul>
+                    <li><a href="tel:999">🚨 Emergency: 999</a></li>
+                    <li><a href="#">HIV/AIDS Helpline</a></li>
+                    <li><a href="#">Crisis Counseling</a></li>
+                    <li><a href="#">Nearest Emergency Clinic</a></li>
+                    <li><a href="#">Mental Health Support</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Legal & Privacy</h3>
+                <ul>
+                    <li><a href="#">Privacy Policy</a></li>
+                    <li><a href="#">Terms of Service</a></li>
+                    <li><a href="#">Medical Disclaimer</a></li>
+                    <li><a href="#">Data Protection</a></li>
+                    <li><a href="#">Accessibility Statement</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 AFYACHECK. All rights reserved. | Empowering Sexual Health Through Knowledge and Privacy</p>
+            <p>🔒 This website uses encryption to protect your privacy | Licensed Healthcare Information Provider</p>
+        </div>
+    </div>
+</footer>
+
+<!-- Back to Top Button -->
+<button class="back-to-top" id="backToTop" onclick="scrollToTop()">↑</button>
+
+<script>
+    // Loading screen
+    window.addEventListener('load', function() {
+        setTimeout(() => {
+            document.getElementById('loading').classList.add('hide');
+        }, 1000);
+    });
+
+    // Close notification bar
+    function closeNotification() {
+        document.getElementById('notificationBar').style.display = 'none';
+    }
+
+    // Mobile menu toggle
+    function toggleMobileMenu() {
+        const mobileNav = document.getElementById('mobileNav');
+        mobileNav.classList.toggle('active');
+    }
+
+    function closeMobileMenu() {
+        document.getElementById('mobileNav').classList.remove('active');
+    }
+
+    // FAQ toggle functionality
+    function toggleFaq(element) {
+        const answer = element.nextElementSibling;
+        const toggle = element.querySelector('.faq-toggle');
+        const isActive = answer.classList.contains('active');
+
+        // Close all FAQ answers
+        document.querySelectorAll('.faq-answer').forEach(ans => {
+            ans.classList.remove('active');
+        });
+        document.querySelectorAll('.faq-toggle').forEach(tog => {
+            tog.textContent = '+';
+            tog.classList.remove('active');
+        });
+
+        // Toggle the clicked one
+        if (!isActive) {
+            answer.classList.add('active');
+            toggle.textContent = '×';
+            toggle.classList.add('active');
+        }
+    }
+
+    // Newsletter subscription
+    function subscribeNewsletter(event) {
+        event.preventDefault();
+        const email = event.target.querySelector('input[type="email"]').value;
+        alert(`Thank you for subscribing! We'll keep you updated on sexual health resources and information. Email: ${email}`);
+        event.target.reset();
+    }
+
+    // Back to top functionality
+    window.addEventListener('scroll', () => {
+        const backToTop = document.getElementById('backToTop');
+        const header = document.querySelector('header');
+        const scrolled = window.pageYOffset;
+
+        // Show/hide back to top button
+        if (scrolled > 500) {
+            backToTop.classList.add('visible');
+        } else {
+            backToTop.classList.remove('visible');
+        }
+
+        // Header background opacity on scroll
+        if (scrolled > 100) {
+            header.style.background = 'rgba(255, 255, 255, 0.98)';
+        } else {
+            header.style.background = 'rgba(255, 255, 255, 0.95)';
+        }
+    });
+
+    function scrollToTop() {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+
+    // Smooth scrolling for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                const offsetTop = target.offsetTop - 100; // Account for fixed header
+                window.scrollTo({
+                    top: offsetTop,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // Main CTA button functionality
+    document.getElementById('startAssessment').addEventListener('click', function(e) {
+        e.preventDefault();
+        // This would normally navigate to the questionnaire page
+        alert('🔍 Starting STI Risk Assessment...\n\nThis would navigate to the questionnaire page. Please implement the actual navigation to your questionnaire form.');
+    });
+
+    // Emergency resources click handler
+    document.querySelectorAll('a[href="#emergency"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('🚨 EMERGENCY RESOURCES\n\n• Kenya Emergency: 999\n• HIV/AIDS Helpline: 0800 724 437\n• Gender-Based Violence: 1195\n• Suicide Prevention: 0800 723 253\n\nFor immediate medical attention, visit your nearest healthcare facility.');
+        });
+    });
+
+    // Animate elements on scroll
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+
+    // Observe elements for animation
+    document.querySelectorAll('.about-card, .testimonial, .step, .stat-item').forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px)';
+        el.style.transition = 'all 0.6s ease';
+        observer.observe(el);
+    });
+
+    // Form validation and accessibility
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add ARIA labels for better accessibility
+        document.querySelectorAll('.faq-question').forEach((question, index) => {
+            question.setAttribute('role', 'button');
+            question.setAttribute('aria-expanded', 'false');
+            question.setAttribute('aria-controls', `faq-answer-${index}`);
+
+            const answer = question.nextElementSibling;
+            answer.setAttribute('id', `faq-answer-${index}`);
+            answer.setAttribute('role', 'region');
+        });
+
+        // Keyboard navigation for FAQ
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleFaq(this);
+                }
+            });
+        });
+    });
+
+    // Performance optimization - lazy loading for images if any are added
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy');
+                    imageObserver.unobserve(img);
+                }
+            });
+        });
+
+        document.querySelectorAll('img[data-src]').forEach(img => {
+            imageObserver.observe(img);
+        });
+    }
+</script>
+</body>
+</html>
