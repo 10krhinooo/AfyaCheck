@@ -1,28 +1,18 @@
 package com.kimanga.afyacheck.config;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-//import javax.servlet.*;
-import java.io.IOException;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.mvc.WebContentInterceptor;
 
 @Configuration
-public class WebConfig {
+public class WebConfig implements WebMvcConfigurer {
 
-    @Bean
-    public Filter cacheControlFilter() {
-        return new Filter() {
-            @Override
-            public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-                    throws IOException, ServletException {
-                HttpServletResponse httpResponse = (HttpServletResponse) response;
-                httpResponse.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1
-                httpResponse.setHeader("Pragma", "no-cache"); // HTTP 1.0
-                httpResponse.setDateHeader("Expires", 0); // Proxies
-                chain.doFilter(request, response);
-            }
-        };
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        WebContentInterceptor interceptor = new WebContentInterceptor();
+        interceptor.addCacheMapping(null, "/admin/**", "/dashboard/**");
+        interceptor.setCacheSeconds(0);
+        registry.addInterceptor(interceptor);
     }
 }

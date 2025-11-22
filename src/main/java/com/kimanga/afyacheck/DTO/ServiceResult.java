@@ -1,20 +1,30 @@
 package com.kimanga.afyacheck.DTO;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 
-@Getter
-@AllArgsConstructor
+@Data
 public class ServiceResult<T> {
-    private final boolean success;
-    private final String message;
-    private final T data;
+    private boolean success;
+    private String message;
+    private T data;
 
     public static <T> ServiceResult<T> success(String message, T data) {
-        return new ServiceResult<>(true, message, data);
+        ServiceResult<T> result = new ServiceResult<>();
+        result.setSuccess(true);
+        result.setMessage(message);
+        result.setData(data);
+        return result;
     }
 
     public static <T> ServiceResult<T> failure(String message) {
-        return new ServiceResult<>(false, message, null);
+        ServiceResult<T> result = new ServiceResult<>();
+        result.setSuccess(false);
+        result.setMessage(message);
+        result.setData(null);
+        return result;
+    }
+
+    public boolean isSuccess() {
+        return success;
     }
 }

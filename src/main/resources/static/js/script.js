@@ -449,3 +449,15 @@ document.addEventListener("DOMContentLoaded", function () {
             }, 5000); // ⏱ 5 seconds
         });
     });
+
+    function loginWithGoogle() {
+        window.location.href = '/oauth2/authorization/google';
+    }
+
+    function loginWithGitHub() {
+        window.location.href = '/oauth2/authorization/github';
+    }
+
+    function loginWithApple() {
+        window.location.href = '/oauth2/authorization/apple';
+    }

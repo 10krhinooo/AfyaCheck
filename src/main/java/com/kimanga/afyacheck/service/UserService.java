@@ -1,7 +1,9 @@
 package com.kimanga.afyacheck.service;
 
 import com.kimanga.afyacheck.mail.EmailService;
+import com.kimanga.afyacheck.model.AuthProvider;
 import com.kimanga.afyacheck.model.User;
+import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.model.VerificationToken;
 import com.kimanga.afyacheck.model.PasswordResetToken;
 import com.kimanga.afyacheck.repository.UserRepository;
@@ -9,7 +11,10 @@ import com.kimanga.afyacheck.repository.VerificationTokenRepository;
 import com.kimanga.afyacheck.repository.PasswordResetTokenRepository;
 import com.kimanga.afyacheck.util.AlertMessage;
 import com.kimanga.afyacheck.DTO.ServiceResult;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
@@ -30,13 +35,31 @@ public class UserService {
 
     /** Register user and send verification email */
     public ServiceResult<User> register(User user) {
+        // Validate required fields
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            return ServiceResult.failure("Username is required");
+        }
+
+        if (user.getName() == null || user.getName().trim().isEmpty()) {
+            return ServiceResult.failure("Full name is required");
+        }
+
+        // Check if username already exists
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+            return ServiceResult.failure("Username already exists");
+        }
+
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             return ServiceResult.failure(AlertMessage.EMAIL_ALREADY_EXISTS);
         }
 
-        // Encode password and disable account until verified
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        // Set user properties
+        user.setProvider(AuthProvider.LOCAL);
+        user.setEmailVerified(false);
         user.setEnabled(false);
+        user.setRole(UserRole.USER); // Set default role
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+
         User savedUser = userRepository.save(user);
 
         // Generate verification token
@@ -122,10 +145,27 @@ public class UserService {
     }
 
     /** Handle logout */
-    public ServiceResult<String> logout() {
-        return ServiceResult.success("✅ You have been logged out successfully.", null);
-    }
+    public ServiceResult<String> logout(HttpSession session, HttpServletResponse response) {
+        try {
+            // Invalidate session
+            if (session != null) {
+                session.invalidate();
+            }
 
+            // Clear authentication
+            SecurityContextHolder.clearContext();
+
+            // Prevent caching - Add these headers to prevent back button access
+            response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            response.setHeader("Pragma", "no-cache");
+            response.setDateHeader("Expires", 0);
+            response.setHeader("X-Content-Type-Options", "nosniff");
+
+            return ServiceResult.success("✅ You have been logged out successfully.", null);
+        } catch (Exception e) {
+            return ServiceResult.failure("❌ Logout failed. Please try again.");
+        }
+    }
 
     /** Reset user password using token */
     public ServiceResult<Void> resetPassword(String token, String newPassword) {
@@ -151,5 +191,24 @@ public class UserService {
     /** Find user by email */
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
+    }
+
+    /** Make a user admin by email */
+    public ServiceResult<Void> makeAdmin(String email) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isEmpty()) {
+            return ServiceResult.failure("User not found");
+        }
+
+        User user = userOptional.get();
+        user.setRole(UserRole.ADMIN);
+        userRepository.save(user);
+
+        return ServiceResult.success("User promoted to admin successfully", null);
+    }
+
+    /** Check if user is admin */
+    public boolean isAdmin(User user) {
+        return user.getRole() == UserRole.ADMIN;
     }
 }
