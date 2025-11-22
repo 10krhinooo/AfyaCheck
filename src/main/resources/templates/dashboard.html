@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AFYACHECK - Know Your STI Status</title>
+    <style>
+        * {
+             margin: 0;
+             padding: 0;
+             box-sizing: border-box;
+         }
+
+         body {
+             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+             line-height: 1.6;
+             color: #2c3e50;
+             background: linear-gradient(135deg, #00b894 0%, #00a085 50%, #0984e3 100%);
+             min-height: 100vh;
+         }
+
+         .container {
+             max-width: 1200px;
+             margin: 0 auto;
+             padding: 0 20px;
+         }
+
+         /* Notification Bar */
+         .notification-bar {
+             background: linear-gradient(45deg, #e17055, #fd79a8);
+             color: white;
+             text-align: center;
+             padding: 10px 0;
+             font-size: 0.9rem;
+             position: relative;
+         }
+
+         .notification-bar .close-btn {
+             position: absolute;
+             right: 20px;
+             top: 50%;
+             transform: translateY(-50%);
+             background: none;
+             border: none;
+             color: white;
+             cursor: pointer;
+             font-size: 1.2rem;
+         }
+
+         /* Header */
+         header {
+             background: rgba(255, 255, 255, 0.95);
+             backdrop-filter: blur(15px);
+             box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+             position: fixed;
+             width: 100%;
+             top: 0;
+             z-index: 1000;
+             transition: all 0.3s ease;
+         }
+
+         nav {
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+             padding: 1rem 0;
+         }
+
+         .logo {
+             font-size: 2.2rem;
+             font-weight: bold;
+             background: linear-gradient(45deg, #00b894, #0984e3);
+             -webkit-background-clip: text;
+             -webkit-text-fill-color: transparent;
+             background-clip: text;
+             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+         }
+
+         .nav-links {
+             list-style: none;
+             display: flex;
+             gap: 2rem;
+             align-items: center;
+         }
+
+         .nav-links a {
+             text-decoration: none;
+             color: #2c3e50;
+             font-weight: 500;
+             transition: color 0.3s ease;
+             position: relative;
+         }
+
+         .nav-links a:hover {
+             color: #00b894;
+         }
+
+         .nav-links a::after {
+             content: '';
+             position: absolute;
+             width: 0;
+             height: 2px;
+             bottom: -5px;
+             left: 0;
+             background: linear-gradient(45deg, #00b894, #0984e3);
+             transition: width 0.3s ease;
+         }
+
+         .nav-links a:hover::after {
+             width: 100%;
+         }
+
+         .emergency-btn {
+             background: linear-gradient(45deg, #e74c3c, #c0392b);
+             color: white !important;
+             padding: 8px 16px;
+             border-radius: 25px;
+             font-size: 0.9rem;
+             box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+             transition: all 0.3s ease;
+         }
+
+         .emergency-btn:hover {
+             transform: translateY(-2px);
+             box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+         }
+
+         /* Hero Section */
+         .hero {
+             background: linear-gradient(135deg, rgba(0, 184, 148, 0.9) 0%, rgba(0, 160, 133, 0.9) 50%, rgba(9, 132, 227, 0.9) 100%);
+             color: white;
+             text-align: center;
+             padding: 140px 0 100px;
+             margin-top: 80px;
+             position: relative;
+             overflow: hidden;
+         }
+
+         .hero::before {
+             content: '';
+             position: absolute;
+             top: 0;
+             left: 0;
+             right: 0;
+             bottom: 0;
+             background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100"><path fill="rgba(255,255,255,0.1)" d="M0,50 Q250,0 500,50 T1000,50 L1000,100 L0,100 Z"></path></svg>') repeat-x;
+             background-size: 1000px 100px;
+             animation: wave 15s ease-in-out infinite;
+         }
+
+         @keyframes wave {
+             0%, 100% { transform: translateX(0); }
+             50% { transform: translateX(-50px); }
+         }
+
+         .hero-content {
+             position: relative;
+             z-index: 2;
+         }
+
+         .hero h1 {
+             font-size: 4rem;
+             margin-bottom: 1.5rem;
+             font-weight: 700;
+             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+             animation: fadeInUp 1s ease;
+         }
+
+         .hero .subtitle {
+             font-size: 1.4rem;
+             margin-bottom: 2.5rem;
+             opacity: 0.95;
+             max-width: 700px;
+             margin-left: auto;
+             margin-right: auto;
+             animation: fadeInUp 1s ease 0.2s both;
+         }
+
+         .hero-buttons {
+             display: flex;
+             gap: 1rem;
+             justify-content: center;
+             flex-wrap: wrap;
+             animation: fadeInUp 1s ease 0.4s both;
+         }
+
+         .cta-button {
+             display: inline-block;
+             background: linear-gradient(45deg, #fd79a8, #e84393);
+             color: white;
+             padding: 18px 45px;
+             text-decoration: none;
+             border-radius: 50px;
+             font-size: 1.2rem;
+             font-weight: 600;
+             transition: all 0.3s ease;
+             box-shadow: 0 10px 30px rgba(253, 121, 168, 0.3);
+             position: relative;
+             overflow: hidden;
+         }
+
+         .cta-button::before {
+             content: '';
+             position: absolute;
+             top: 0;
+             left: -100%;
+             width: 100%;
+             height: 100%;
+             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+             transition: left 0.6s;
+         }
+
+         .cta-button:hover::before {
+             left: 100%;
+         }
+
+         .cta-button:hover {
+             transform: translateY(-3px);
+             box-shadow: 0 15px 40px rgba(253, 121, 168, 0.4);
+         }
+
+         .secondary-btn {
+             background: rgba(255, 255, 255, 0.2);
+             border: 2px solid rgba(255, 255, 255, 0.5);
+             backdrop-filter: blur(10px);
+         }
+
+         .secondary-btn:hover {
+             background: rgba(255, 255, 255, 0.3);
+             transform: translateY(-3px);
+         }
+
+         @keyframes fadeInUp {
+             from { opacity: 0; transform: translateY(30px); }
+             to { opacity: 1; transform: translateY(0); }
+         }
+
+         /* Trust Indicators */
+         .trust-indicators {
+             background: rgba(255, 255, 255, 0.95);
+             padding: 30px 0;
+             text-align: center;
+         }
+
+         .trust-grid {
+             display: grid;
+             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+             gap: 2rem;
+             align-items: center;
+         }
+
+         .trust-item {
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             gap: 10px;
+             color: #00b894;
+             font-weight: 600;
+         }
+
+         .trust-icon {
+             font-size: 1.5rem;
+         }
+
+         /* Main Content */
+         main {
+             background: white;
+             margin: 0;
+         }
+
+         /* Stats Section */
+         .stats {
+             background: linear-gradient(135deg, #74b9ff, #0984e3);
+             color: white;
+             padding: 60px 0;
+             text-align: center;
+         }
+
+         .stats-grid {
+             display: grid;
+             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+             gap: 2rem;
+         }
+
+         .stat-item h3 {
+             font-size: 3rem;
+             margin-bottom: 0.5rem;
+             font-weight: 700;
+         }
+
+         .stat-item p {
+             font-size: 1.1rem;
+             opacity: 0.9;
+         }
+
+         /* About Section */
+         .about {
+             padding: 100px 0;
+             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+         }
+
+         .about h2 {
+             text-align: center;
+             font-size: 2.8rem;
+             margin-bottom: 3rem;
+             color: #2c3e50;
+             position: relative;
+         }
+
+         .about h2::after {
+             content: '';
+             width: 80px;
+             height: 4px;
+             background: linear-gradient(45deg, #00b894, #0984e3);
+             position: absolute;
+             bottom: -10px;
+             left: 50%;
+             transform: translateX(-50%);
+             border-radius: 2px;
+         }
+
+         .about-grid {
+             display: grid;
+             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+             gap: 3rem;
+             margin-top: 4rem;
+         }
+
+         .about-card {
+             background: white;
+             padding: 2.5rem;
+             border-radius: 20px;
+             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+             transition: all 0.3s ease;
+             position: relative;
+             overflow: hidden;
+         }
+
+         .about-card::before {
+             content: '';
+             position: absolute;
+             top: 0;
+             left: 0;
+             right: 0;
+             height: 4px;
+             background: linear-gradient(45deg, #00b894, #0984e3);
+         }
+
+         .about-card:hover {
+             transform: translateY(-10px);
+             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+         }
+
+         .about-card h3 {
+             color: #00b894;
+             margin-bottom: 1.5rem;
+             font-size: 1.6rem;
+             display: flex;
+             align-items: center;
+             gap: 10px;
+         }
+
+         /* How It Works */
+         .how-it-works {
+             padding: 100px 0;
+             background: white;
+         }
+
+         .how-it-works h2 {
+             text-align: center;
+             font-size: 2.8rem;
+             margin-bottom: 4rem;
+             color: #2c3e50;
+         }
+
+         .steps {
+             display: grid;
+             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+             gap: 2rem;
+             position: relative;
+         }
+
+         .step {
+             text-align: center;
+             position: relative;
+         }
+
+         .step-number {
+             width: 80px;
+             height: 80px;
+             background: linear-gradient(45deg, #00b894, #0984e3);
+             color: white;
+             border-radius: 50%;
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             font-size: 2rem;
+             font-weight: bold;
+             margin: 0 auto 1.5rem;
+             box-shadow: 0 10px 30px rgba(0, 184, 148, 0.3);
+         }
+
+         .step h3 {
+             color: #2c3e50;
+             margin-bottom: 1rem;
+             font-size: 1.4rem;
+         }
+
+         /* Testimonials */
+         .testimonials {
+             padding: 100px 0;
+             background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+             color: white;
+         }
+
+         .testimonials h2 {
+             text-align: center;
+             font-size: 2.8rem;
+             margin-bottom: 4rem;
+             color: white;
+         }
+
+         .testimonials-grid {
+             display: grid;
+             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+             gap: 2rem;
+         }
+
+         .testimonial {
+             background: rgba(255, 255, 255, 0.15);
+             backdrop-filter: blur(10px);
+             padding: 2.5rem;
+             border-radius: 20px;
+             text-align: center;
+             position: relative;
+             border: 1px solid rgba(255, 255, 255, 0.2);
+             transition: transform 0.3s ease;
+         }
+
+         .testimonial:hover {
+             transform: translateY(-5px);
+         }
+
+         .testimonial::before {
+             content: '"';
+             font-size: 4rem;
+             position: absolute;
+             top: -10px;
+             left: 20px;
+             opacity: 0.3;
+         }
+
+         .testimonial p {
+             font-style: italic;
+             margin-bottom: 1.5rem;
+             font-size: 1.1rem;
+             line-height: 1.7;
+         }
+
+         .testimonial-author {
+             font-weight: 600;
+             opacity: 0.9;
+         }
+
+         .rating {
+             color: #fdcb6e;
+             font-size: 1.2rem;
+             margin-bottom: 1rem;
+         }
+
+         /* FAQ Section */
+         .faq {
+             padding: 100px 0;
+             background: #f8f9fa;
+         }
+
+         .faq h2 {
+             text-align: center;
+             font-size: 2.8rem;
+             margin-bottom: 4rem;
+             color: #2c3e50;
+         }
+
+         .faq-container {
+             max-width: 800px;
+             margin: 0 auto;
+         }
+
+         .faq-item {
+             background: white;
+             margin-bottom: 1.5rem;
+             border-radius: 15px;
+             overflow: hidden;
+             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+             transition: all 0.3s ease;
+         }
+
+         .faq-item:hover {
+             box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+         }
+
+         .faq-question {
+             background: linear-gradient(45deg, #00b894, #0984e3);
+             color: white;
+             padding: 2rem;
+             cursor: pointer;
+             font-weight: 600;
+             font-size: 1.1rem;
+             transition: all 0.3s ease;
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+         }
+
+         .faq-question:hover {
+             background: linear-gradient(45deg, #00a085, #0770d1);
+         }
+
+         .faq-toggle {
+             font-size: 1.5rem;
+             transition: transform 0.3s ease;
+         }
+
+         .faq-toggle.active {
+             transform: rotate(45deg);
+         }
+
+         .faq-answer {
+             padding: 0 2rem;
+             max-height: 0;
+             overflow: hidden;
+             transition: all 0.3s ease;
+             line-height: 1.7;
+         }
+
+         .faq-answer.active {
+             padding: 2rem;
+             max-height: 500px;
+         }
+
+         /* Newsletter Section */
+         .newsletter {
+             background: linear-gradient(135deg, #74b9ff, #0984e3);
+             color: white;
+             padding: 60px 0;
+             text-align: center;
+         }
+
+         .newsletter h3 {
+             font-size: 2rem;
+             margin-bottom: 1rem;
+         }
+
+         .newsletter-form {
+             max-width: 500px;
+             margin: 0 auto;
+             display: flex;
+             gap: 1rem;
+             margin-top: 2rem;
+         }
+
+         .newsletter-form input {
+             flex: 1;
+             padding: 15px;
+             border: none;
+             border-radius: 50px;
+             font-size: 1rem;
+         }
+
+         .newsletter-form button {
+             background: linear-gradient(45deg, #fd79a8, #e84393);
+             color: white;
+             border: none;
+             padding: 15px 30px;
+             border-radius: 50px;
+             font-weight: 600;
+             cursor: pointer;
+             transition: all 0.3s ease;
+         }
+
+         .newsletter-form button:hover {
+             transform: translateY(-2px);
+             box-shadow: 0 8px 20px rgba(253, 121, 168, 0.3);
+         }
+
+         /* Footer */
+         footer {
+             background: #2c3e50;
+             color: white;
+             padding: 4rem 0 2rem;
+         }
+
+         .footer-content {
+             display: grid;
+             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+             gap: 3rem;
+             margin-bottom: 3rem;
+         }
+
+         .footer-section h3 {
+             margin-bottom: 1.5rem;
+             color: #00b894;
+             font-size: 1.3rem;
+         }
+
+         .footer-section ul {
+             list-style: none;
+         }
+
+         .footer-section ul li {
+             margin-bottom: 0.8rem;
+         }
+
+         .footer-section ul li a {
+             color: #bdc3c7;
+             text-decoration: none;
+             transition: color 0.3s ease;
+         }
+
+         .footer-section ul li a:hover {
+             color: #00b894;
+         }
+
+         .social-links {
+             display: flex;
+             gap: 1rem;
+             margin-top: 1rem;
+         }
+
+         .social-link {
+             width: 40px;
+             height: 40px;
+             background: linear-gradient(45deg, #00b894, #0984e3);
+             border-radius: 50%;
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             text-decoration: none;
+             color: white;
+             transition: transform 0.3s ease;
+         }
+
+         .social-link:hover {
+             transform: translateY(-3px);
+         }
+
+         .footer-bottom {
+             border-top: 1px solid #34495e;
+             padding-top: 2rem;
+             text-align: center;
+             color: #bdc3c7;
+         }
+
+         /* Session Info */
+         .session-info {
+             background: rgba(0, 0, 0, 0.1);
+             padding: 10px;
+             border-radius: 5px;
+             margin-top: 10px;
+             font-size: 0.8rem;
+             color: #bdc3c7;
+         }
+
+         .session-id {
+             font-family: monospace;
+             word-break: break-all;
+         }
+
+         /* Back to Top Button */
+         .back-to-top {
+             position: fixed;
+             bottom: 30px;
+             right: 30px;
+             background: linear-gradient(45deg, #00b894, #0984e3);
+             color: white;
+             width: 50px;
+             height: 50px;
+             border-radius: 50%;
+             border: none;
+             cursor: pointer;
+             font-size: 1.5rem;
+             opacity: 0;
+             visibility: hidden;
+             transition: all 0.3s ease;
+             box-shadow: 0 8px 25px rgba(0, 184, 148, 0.3);
+         }
+
+         .back-to-top.visible {
+             opacity: 1;
+             visibility: visible;
+         }
+
+         .back-to-top:hover {
+             transform: translateY(-5px);
+             box-shadow: 0 12px 35px rgba(0, 184, 148, 0.4);
+         }
+
+         /* Mobile Menu */
+         .mobile-menu {
+             display: none;
+         }
+
+         .mobile-nav {
+             display: none;
+             position: fixed;
+             top: 80px;
+             left: 0;
+             right: 0;
+             background: rgba(255, 255, 255, 0.98);
+             backdrop-filter: blur(15px);
+             padding: 2rem;
+             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+             z-index: 999;
+         }
+
+         .mobile-nav.active {
+             display: block;
+         }
+
+         .mobile-nav ul {
+             list-style: none;
+         }
+
+         .mobile-nav ul li {
+             margin-bottom: 1rem;
+         }
+
+         .mobile-nav ul li a {
+             color: #2c3e50;
+             text-decoration: none;
+             font-size: 1.2rem;
+             font-weight: 500;
+         }
+
+         /* Responsive Design */
+         @media (max-width: 768px) {
+             .hero h1 {
+                 font-size: 2.5rem;
+             }
+
+             .hero .subtitle {
+                 font-size: 1.1rem;
+             }
+
+             .hero-buttons {
+                 flex-direction: column;
+                 align-items: center;
+             }
+
+             .nav-links {
+                 display: none;
+             }
+
+             .mobile-menu {
+                 display: block;
+                 background: none;
+                 border: none;
+                 font-size: 1.8rem;
+                 color: #2c3e50;
+                 cursor: pointer;
+             }
+
+             .newsletter-form {
+                 flex-direction: column;
+             }
+
+             .steps::before {
+                 display: none;
+             }
+
+             .about-grid,
+             .testimonials-grid {
+                 grid-template-columns: 1fr;
+             }
+         }
+
+         /* Loading Animation */
+         .loading {
+             position: fixed;
+             top: 0;
+             left: 0;
+             right: 0;
+             bottom: 0;
+             background: linear-gradient(135deg, #00b894, #0984e3);
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             z-index: 9999;
+             transition: opacity 0.5s ease;
+         }
+
+         .loading.hide {
+             opacity: 0;
+             pointer-events: none;
+         }
+
+         .spinner {
+             width: 50px;
+             height: 50px;
+             border: 3px solid rgba(255, 255, 255, 0.3);
+             border-top: 3px solid white;
+             border-radius: 50%;
+             animation: spin 1s linear infinite;
+         }
+
+         @keyframes spin {
+             0% { transform: rotate(0deg); }
+             100% { transform: rotate(360deg); }
+         }
+    </style>
+</head>
+<body>
+<!-- Loading Screen -->
+<div class="loading" id="loading">
+    <div class="spinner"></div>
+</div>
+
+<!-- Notification Bar -->
+<div class="notification-bar" id="notificationBar">
+    🔒 Your privacy is protected - All assessments are completely confidential
+    <button class="close-btn" onclick="closeNotification()">×</button>
+</div>
+
+<header>
+    <nav class="container">
+        <div class="logo">AFYACHECK</div>
+        <ul class="nav-links">
+            <li><a href="#home">Home</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#testimonials">Testimonials</a></li>
+            <li><a href="#faq">FAQ</a></li>
+            <li><a href="#contact">Contact</a></li>
+            <li>
+                <form th:action="@{/logout}" method="post" style="display: inline;">
+                    <button type="submit" class="emergency-btn" style="border: none; cursor: pointer;">
+                        🚪 Logout
+                    </button>
+                </form>
+            </li>
+        </ul>
+        <button class="mobile-menu" onclick="toggleMobileMenu()">☰</button>
+    </nav>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav" id="mobileNav">
+        <ul>
+            <li><a href="#home" onclick="closeMobileMenu()">Home</a></li>
+            <li><a href="#about" onclick="closeMobileMenu()">About</a></li>
+            <li><a href="#how-it-works" onclick="closeMobileMenu()">How It Works</a></li>
+            <li><a href="#testimonials" onclick="closeMobileMenu()">Testimonials</a></li>
+            <li><a href="#faq" onclick="closeMobileMenu()">FAQ</a></li>
+            <li><a href="#contact" onclick="closeMobileMenu()">Contact</a></li>
+            <li>
+                <form th:action="@{/logout}" method="post" style="display: inline;">
+                    <button type="submit" class="emergency-btn" style="border: none; cursor: pointer;" onclick="closeMobileMenu()">
+                        🚪 Logout
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </div>
+</header>
+
+<section class="hero" id="home">
+    <div class="container">
+        <div class="hero-content">
+            <h1>Know Your STI Status</h1>
+            <p class="subtitle">Take our confidential, evidence-based questionnaire to assess your STI risk and receive personalized recommendations for testing and care. Your health, your privacy, your choice.</p>
+            <div class="hero-buttons">
+                <a th:href="@{/questionnaire/start}" class="cta-button" id="startAssessment">Start Free Assessment</a>
+                <a href="#how-it-works" class="cta-button secondary-btn">📋 How It Works</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="trust-indicators">
+    <div class="container">
+        <div class="trust-grid">
+            <div class="trust-item">
+                <span class="trust-icon">🔒</span>
+                <span>100% Confidential</span>
+            </div>
+            <div class="trust-item">
+                <span class="trust-icon">✓</span>
+                <span>Evidence-Based</span>
+            </div>
+            <div class="trust-item">
+                <span class="trust-icon">🏥</span>
+                <span>Medical Grade</span>
+            </div>
+            <div class="trust-item">
+                <span class="trust-icon">⚡</span>
+                <span>Instant Results</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<main>
+    <section class="stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>50K+</h3>
+                    <p>Users Assessed</p>
+                </div>
+                <div class="stat-item">
+                    <h3>98%</h3>
+                    <p>Accuracy Rate</p>
+                </div>
+                <div class="stat-item">
+                    <h3>24/7</h3>
+                    <p>Available Support</p>
+                </div>
+                <div class="stat-item">
+                    <h3>100%</h3>
+                    <p>Anonymous</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="about" id="about">
+        <div class="container">
+            <h2>Why Choose AFYACHECK?</h2>
+            <div class="about-grid">
+                <div class="about-card">
+                    <h3>🔒 Complete Privacy</h3>
+                    <p>Your information is completely confidential. We never store personally identifiable information, and all assessments are anonymous. Your health, your data, your control.</p>
+                </div>
+                <div class="about-card">
+                    <h3>🎯 Personalized Results</h3>
+                    <p>Get customized recommendations based on your specific risk factors and circumstances. Our algorithm considers multiple factors to provide accurate, actionable guidance.</p>
+                </div>
+                <div class="about-card">
+                    <h3>⚕️ Expert-Backed</h3>
+                    <p>Developed in collaboration with healthcare professionals and based on current medical guidelines. Trust in evidence-based assessments that reflect the latest in sexual health research.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <h2>How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Take the Assessment</h3>
+                    <p>Complete our confidential questionnaire about your sexual health history and risk factors. Takes only 5-10 minutes.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Get Your Results</h3>
+                    <p>Receive an instant, personalized assessment of your STI risk based on current medical guidelines.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Take Action</h3>
+                    <p>Access recommendations for testing, treatment options, and nearby healthcare facilities in Kenya.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="testimonials" id="testimonials">
+        <div class="container">
+            <h2>What Our Users Say</h2>
+            <div class="testimonials-grid">
+                <div class="testimonial">
+                    <div class="rating">★★★★★</div>
+                    <p>This service gave me the confidence to get tested. The process was simple, private, and the information provided was incredibly helpful. I wish I had found this sooner.</p>
+                    <div class="testimonial-author">- Anonymous User, Nairobi</div>
+                </div>
+                <div class="testimonial">
+                    <div class="rating">★★★★★</div>
+                    <p>As someone who was nervous about discussing sexual health, this platform made everything so much easier. The assessment was thorough and the recommendations were spot-on.</p>
+                    <div class="testimonial-author">- Anonymous User, Mombasa</div>
+                </div>
+                <div class="testimonial">
+                    <div class="rating">★★★★★</div>
+                    <p>AFYACHECK helped me understand my risk factors and connected me with nearby testing facilities. The entire experience was professional and completely confidential.</p>
+                    <div class="testimonial-author">- Anonymous User, Kisumu</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="faq" id="faq">
+        <div class="container">
+            <h2>Frequently Asked Questions</h2>
+            <div class="faq-container">
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)" tabindex="0">
+                        <span>Is my information really confidential?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        Yes, absolutely. We do not collect any personally identifiable information. All assessments are completely anonymous, and we use industry-standard encryption to protect your data. Your privacy is our top priority.
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)" tabindex="0">
+                        <span>How accurate is the assessment?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        Our assessment is based on current medical guidelines and has been developed in consultation with healthcare professionals. However, it's important to note that this is a risk assessment tool, not a diagnostic test. For definitive results, always consult with a healthcare provider.
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)" tabindex="0">
+                        <span>Do I need to create an account?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        No account is required for the basic assessment. You can take the questionnaire completely anonymously. However, creating an account allows you to save your results and track your sexual health over time.
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)" tabindex="0">
+                        <span>What happens after I complete the assessment?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        After completing the assessment, you'll receive personalized recommendations including which STI tests you might need, nearby testing facilities in Kenya, and information about treatment options. You'll also receive educational resources tailored to your situation.
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)" tabindex="0">
+                        <span>Is this service free?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        Yes, the risk assessment questionnaire is completely free. Our mission is to make sexual health information accessible to everyone in Kenya. While the assessment is free, any testing or treatment at healthcare facilities would follow their standard pricing.
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)" tabindex="0">
+                        <span>Can I take the assessment for someone else?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        The assessment is designed for individual use. However, you can share the link with others who might benefit from it. Each person should complete their own assessment for accurate personalized results.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="newsletter">
+        <div class="container">
+            <h3>Stay Informed</h3>
+            <p>Get updates on sexual health, new features, and important health alerts</p>
+            <form class="newsletter-form" onsubmit="subscribeNewsletter(event)">
+                <input type="email" placeholder="Enter your email" required>
+                <button type="submit">Subscribe</button>
+            </form>
+        </div>
+    </section>
+</main>
+
+<footer id="contact">
+    <div class="container">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>AFYACHECK</h3>
+                <p>Empowering individuals with confidential, evidence-based sexual health assessments across Kenya.</p>
+                <div class="social-links">
+                    <a href="#" class="social-link">📘</a>
+                    <a href="#" class="social-link">🐦</a>
+                    <a href="#" class="social-link">📷</a>
+                    <a href="#" class="social-link">💼</a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#about">About Us</a></li>
+                    <li><a href="#how-it-works">How It Works</a></li>
+                    <li><a href="#testimonials">Testimonials</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Resources</h3>
+                <ul>
+                    <li><a href="#">STI Information</a></li>
+                    <li><a href="#">Testing Centers</a></li>
+                    <li><a href="#">Prevention Guide</a></li>
+                    <li><a href="#">Treatment Options</a></li>
+                    <li><a href="#">Support Groups</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contact</h3>
+                <ul>
+                    <li>📧 info@afyacheck.co.ke</li>
+                    <li>📞 +254 700 000 000</li>
+                    <li>📍 Nairobi, Kenya</li>
+                    <li><a href="#">Privacy Policy</a></li>
+                    <li><a href="#">Terms of Service</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 AFYACHECK. All rights reserved. | Your health, your privacy, your choice.</p>
+            <!-- Session Information for Debugging -->
+            <div class="session-info" th:if="${sessionId}">
+                <strong>Session ID:</strong> <span class="session-id" th:text="${sessionId}"></span>
+                <br><small>Your assessment session is active and secure</small>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<button class="back-to-top" id="backToTop" onclick="scrollToTop()">↑</button>
+
+<script>
+    // Loading screen
+    window.addEventListener('load', function() {
+        setTimeout(() => {
+            document.getElementById('loading').classList.add('hide');
+        }, 1000);
+    });
+
+    // Close notification bar
+    function closeNotification() {
+        document.getElementById('notificationBar').style.display = 'none';
+    }
+
+    // Mobile menu toggle
+    function toggleMobileMenu() {
+        const mobileNav = document.getElementById('mobileNav');
+        mobileNav.classList.toggle('active');
+    }
+
+    function closeMobileMenu() {
+        document.getElementById('mobileNav').classList.remove('active');
+    }
+
+    // FAQ toggle functionality
+    function toggleFaq(element) {
+        const answer = element.nextElementSibling;
+        const toggle = element.querySelector('.faq-toggle');
+        const isActive = answer.classList.contains('active');
+
+        // Close all FAQ answers
+        document.querySelectorAll('.faq-answer').forEach(ans => {
+            ans.classList.remove('active');
+        });
+        document.querySelectorAll('.faq-toggle').forEach(tog => {
+            tog.textContent = '+';
+            tog.classList.remove('active');
+        });
+
+        // Toggle the clicked one
+        if (!isActive) {
+            answer.classList.add('active');
+            toggle.textContent = '×';
+            toggle.classList.add('active');
+        }
+    }
+
+    // Newsletter subscription
+    function subscribeNewsletter(event) {
+        event.preventDefault();
+        const email = event.target.querySelector('input[type="email"]').value;
+        alert(`Thank you for subscribing! We'll keep you updated on sexual health resources and information. Email: ${email}`);
+        event.target.reset();
+    }
+
+    // Back to top functionality
+    window.addEventListener('scroll', () => {
+        const backToTop = document.getElementById('backToTop');
+        const header = document.querySelector('header');
+        const scrolled = window.pageYOffset;
+
+        // Show/hide back to top button
+        if (scrolled > 500) {
+            backToTop.classList.add('visible');
+        } else {
+            backToTop.classList.remove('visible');
+        }
+
+        // Header background opacity on scroll
+        if (scrolled > 100) {
+            header.style.background = 'rgba(255, 255, 255, 0.98)';
+        } else {
+            header.style.background = 'rgba(255, 255, 255, 0.95)';
+        }
+    });
+
+    function scrollToTop() {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+
+    // Smooth scrolling for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                const offsetTop = target.offsetTop - 100; // Account for fixed header
+                window.scrollTo({
+                    top: offsetTop,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // Logout form submission is handled by Spring Security
+    // No additional JavaScript needed for logout functionality
+
+    // Animate elements on scroll
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+
+    // Observe elements for animation
+    document.querySelectorAll('.about-card, .testimonial, .step, .stat-item').forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px)';
+        el.style.transition = 'all 0.6s ease';
+        observer.observe(el);
+    });
+
+    // Form validation and accessibility
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add ARIA labels for better accessibility
+        document.querySelectorAll('.faq-question').forEach((question, index) => {
+            question.setAttribute('role', 'button');
+            question.setAttribute('aria-expanded', 'false');
+            question.setAttribute('aria-controls', `faq-answer-${index}`);
+
+            const answer = question.nextElementSibling;
+            answer.setAttribute('id', `faq-answer-${index}`);
+            answer.setAttribute('role', 'region');
+        });
+
+        // Keyboard navigation for FAQ
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleFaq(this);
+                }
+            });
+        });
+    });
+
+    // Performance optimization - lazy loading for images if any are added
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy');
+                    imageObserver.unobserve(img);
+                }
+            });
+        });
+
+        document.querySelectorAll('img[data-src]').forEach(img => {
+            imageObserver.observe(img);
+        });
+    }
+</script>
+</body>
+</html>

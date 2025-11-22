@@ -1,0 +1,477 @@
+{
+  "node_id": "root",
+  "question_key": "consent",
+  "children": [
+    {
+      "condition": "consent == 'no'",
+      "action": "end",
+      "message": "Thank you. You have declined to participate."
+    },
+    {
+      "condition": "consent == 'yes'",
+      "action": "goto",
+      "next": "age_check"
+    }
+  ],
+  "subtrees": {
+    "age_check": {
+      "node_id": "age_check",
+      "question_key": "age",
+      "children": [
+        {
+          "condition": "age < 13 || age == null",
+          "action": "end",
+          "message": "This assessment is designed for people aged 13 and older."
+        },
+        {
+          "condition": "age >= 13",
+          "action": "goto",
+          "next": "gender_node"
+        }
+      ]
+    },
+    "gender_node": {
+      "node_id": "gender_node",
+      "question_key": "gender",
+      "children": [
+        {
+          "condition": "gender != null",
+          "action": "goto",
+          "next": "sexual_activity_node"
+        }
+      ]
+    },
+    "sexual_activity_node": {
+      "node_id": "sexual_activity_node",
+      "question_key": "sexual_activity",
+      "children": [
+        {
+          "condition": "sexual_activity == 'no' || sexual_activity == null",
+          "action": "goto",
+          "next": "non_sexually_active_node"
+        },
+        {
+          "condition": "sexual_activity == 'yes'",
+          "action": "goto",
+          "next": "sexual_active_node"
+        }
+      ]
+    },
+    "non_sexually_active_node": {
+      "node_id": "non_sexually_active_node",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "female_non_active_node"
+        }
+      ]
+    },
+    "female_non_active_node": {
+      "node_id": "female_non_active_node",
+      "children": [
+        {
+          "condition": "gender == 'Female'",
+          "action": "goto",
+          "next": "pregnancy_status_non_active"
+        },
+        {
+          "condition": "gender != 'Female'",
+          "action": "goto",
+          "next": "knowledge_assessment_node"
+        }
+      ]
+    },
+    "pregnancy_status_non_active": {
+      "node_id": "pregnancy_status_non_active",
+      "question_key": "pregnancy_status",
+      "children": [
+        {
+          "condition": "pregnancy_status == 'yes'",
+          "action": "goto",
+          "next": "pregnancy_related_care"
+        },
+        {
+          "condition": "pregnancy_status == 'no' || pregnancy_status == null",
+          "action": "goto",
+          "next": "contraception_node"
+        }
+      ]
+    },
+    "pregnancy_related_care": {
+      "node_id": "pregnancy_related_care",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "contraception_node"
+        }
+      ]
+    },
+    "contraception_node": {
+      "node_id": "contraception_node",
+      "question_key": "contraception_use",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "knowledge_assessment_node"
+        }
+      ]
+    },
+    "sexual_active_node": {
+      "node_id": "sexual_active_node",
+      "question_key": "recent_partners",
+      "children": [
+        {
+          "condition": "recent_partners > 1",
+          "action": "goto",
+          "next": "multiple_partners_node"
+        },
+        {
+          "condition": "recent_partners <= 1",
+          "action": "goto",
+          "next": "single_partner_node"
+        }
+      ]
+    },
+    "multiple_partners_node": {
+      "node_id": "multiple_partners_node",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "condom_use_node"
+        }
+      ]
+    },
+    "single_partner_node": {
+      "node_id": "single_partner_node",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "condom_use_node"
+        }
+      ]
+    },
+    "condom_use_node": {
+      "node_id": "condom_use_node",
+      "question_key": "condom_use",
+      "children": [
+        {
+          "condition": "condom_use == 'Always'",
+          "action": "goto",
+          "next": "partner_risk_node"
+        },
+        {
+          "condition": "condom_use != 'Always' || condom_use == null",
+          "action": "goto",
+          "next": "high_risk_behavior_node"
+        }
+      ]
+    },
+    "partner_risk_node": {
+      "node_id": "partner_risk_node",
+      "question_key": "high_risk_partner",
+      "children": [
+        {
+          "condition": "high_risk_partner == 'yes'",
+          "action": "goto",
+          "next": "high_risk_behavior_node"
+        },
+        {
+          "condition": "high_risk_partner == 'no' || high_risk_partner == null",
+          "action": "goto",
+          "next": "sti_symptoms_node"
+        }
+      ]
+    },
+    "high_risk_behavior_node": {
+      "node_id": "high_risk_behavior_node",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "transactional_sex_node"
+        }
+      ]
+    },
+    "transactional_sex_node": {
+      "node_id": "transactional_sex_node",
+      "question_key": "transactional_sex",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "sti_symptoms_node"
+        }
+      ]
+    },
+    "sti_symptoms_node": {
+      "node_id": "sti_symptoms_node",
+      "question_key": "sti_symptoms",
+      "children": [
+        {
+          "condition": "sti_symptoms == 'yes' || discharge_symptom == 'yes' || painful_urination == 'yes' || genital_sores == 'yes'",
+          "action": "goto",
+          "next": "symptomatic_care_node"
+        },
+        {
+          "condition": "sti_symptoms == 'no' && (discharge_symptom == 'no' || discharge_symptom == null) && (painful_urination == 'no' || painful_urination == null) && (genital_sores == 'no' || genital_sores == null)",
+          "action": "goto",
+          "next": "previous_sti_node"
+        }
+      ]
+    },
+    "symptomatic_care_node": {
+      "node_id": "symptomatic_care_node",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "previous_sti_node"
+        }
+      ]
+    },
+    "previous_sti_node": {
+      "node_id": "previous_sti_node",
+      "question_key": "previous_sti",
+      "children": [
+        {
+          "condition": "previous_sti == 'yes'",
+          "action": "goto",
+          "next": "sti_treatment_node"
+        },
+        {
+          "condition": "previous_sti == 'no' || previous_sti == null",
+          "action": "goto",
+          "next": "hiv_test_node"
+        }
+      ]
+    },
+    "sti_treatment_node": {
+      "node_id": "sti_treatment_node",
+      "question_key": "sti_treatment",
+      "children": [
+        {
+          "condition": "sti_treatment == 'no'",
+          "action": "goto",
+          "next": "urgent_care_node"
+        },
+        {
+          "condition": "sti_treatment == 'yes'",
+          "action": "goto",
+          "next": "hiv_test_node"
+        }
+      ]
+    },
+    "urgent_care_node": {
+      "node_id": "urgent_care_node",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "hiv_test_node"
+        }
+      ]
+    },
+    "hiv_test_node": {
+      "node_id": "hiv_test_node",
+      "question_key": "hiv_test",
+      "children": [
+        {
+          "condition": "hiv_test == 'yes'",
+          "action": "goto",
+          "next": "last_hiv_test_node"
+        },
+        {
+          "condition": "hiv_test == 'no' || hiv_test == null",
+          "action": "goto",
+          "next": "gender_specific_routing_active"
+        }
+      ]
+    },
+    "last_hiv_test_node": {
+      "node_id": "last_hiv_test_node",
+      "question_key": "last_hiv_test",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "other_sti_tests_node"
+        }
+      ]
+    },
+    "other_sti_tests_node": {
+      "node_id": "other_sti_tests_node",
+      "question_key": "other_sti_tests",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "gender_specific_routing_active"
+        }
+      ]
+    },
+    "gender_specific_routing_active": {
+      "node_id": "gender_specific_routing_active",
+      "children": [
+        {
+          "condition": "gender == 'Female'",
+          "action": "goto",
+          "next": "female_reproductive_health"
+        },
+        {
+          "condition": "gender != 'Female'",
+          "action": "goto",
+          "next": "knowledge_assessment_node"
+        }
+      ]
+    },
+    "female_reproductive_health": {
+      "node_id": "female_reproductive_health",
+      "question_key": "pregnancy_status",
+      "children": [
+        {
+          "condition": "pregnancy_status == 'yes'",
+          "action": "goto",
+          "next": "pregnancy_related_care"
+        },
+        {
+          "condition": "pregnancy_status == 'no' || pregnancy_status == null",
+          "action": "goto",
+          "next": "contraception_node"
+        }
+      ]
+    },
+    "knowledge_assessment_node": {
+      "node_id": "knowledge_assessment_node",
+      "question_key": "sti_knowledge",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "substance_use_node"
+        }
+      ]
+    },
+    "substance_use_node": {
+      "node_id": "substance_use_node",
+      "question_key": "substance_sex",
+      "children": [
+        {
+          "condition": "substance_sex == 'yes'",
+          "action": "goto",
+          "next": "substance_followup"
+        },
+        {
+          "condition": "substance_sex == 'no' || substance_sex == null",
+          "action": "goto",
+          "next": "sexual_coercion_node"
+        }
+      ]
+    },
+    "substance_followup": {
+      "node_id": "substance_followup",
+      "question_key": "drug_use",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "sexual_coercion_node"
+        }
+      ]
+    },
+    "sexual_coercion_node": {
+      "node_id": "sexual_coercion_node",
+      "question_key": "sexual_coercion",
+      "children": [
+        {
+          "condition": "sexual_coercion == 'yes'",
+          "action": "goto",
+          "next": "support_referral_node"
+        },
+        {
+          "condition": "sexual_coercion == 'no' || sexual_coercion == null",
+          "action": "goto",
+          "next": "partner_history_node"
+        }
+      ]
+    },
+    "support_referral_node": {
+      "node_id": "support_referral_node",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "partner_history_node"
+        }
+      ]
+    },
+    "partner_history_node": {
+      "node_id": "partner_history_node",
+      "question_key": "partner_testing",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "healthcare_access_node"
+        }
+      ]
+    },
+    "healthcare_access_node": {
+      "node_id": "healthcare_access_node",
+      "question_key": "insurance_coverage",
+      "children": [
+        {
+          "condition": "insurance_coverage == 'no' || insurance_coverage == null",
+          "action": "goto",
+          "next": "cost_barrier_node"
+        },
+        {
+          "condition": "insurance_coverage == 'yes'",
+          "action": "goto",
+          "next": "preferred_testing_node"
+        }
+      ]
+    },
+    "cost_barrier_node": {
+      "node_id": "cost_barrier_node",
+      "question_key": "cost_barrier",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "preferred_testing_node"
+        }
+      ]
+    },
+    "preferred_testing_node": {
+      "node_id": "preferred_testing_node",
+      "question_key": "preferred_testing",
+      "children": [
+        {
+          "condition": "true",
+          "action": "goto",
+          "next": "final_recommendations"
+        }
+      ]
+    },
+    "final_recommendations": {
+      "node_id": "final_recommendations",
+      "children": [
+        {
+          "condition": "sexual_activity == 'no'",
+          "action": "end",
+          "message": "Thank you for completing the STI risk assessment. Since you are not currently sexually active, your risk is low."
+        },
+        {
+          "condition": "sexual_activity == 'yes'",
+          "action": "end",
+          "message": "Thank you for completing the STI risk assessment. Based on your responses, regular STI screening is recommended."
+        }
+      ]
+    }
+  }
+}

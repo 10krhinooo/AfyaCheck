@@ -24,6 +24,11 @@ public class AlertMessage {
             "Expired password reset token.";
     public static final String USER_NOT_FOUND =
             "❌ No user found with the provided email address.";
+    public static final String OAUTH_FAILED =
+            "OAuth authentication failed. Please try again.";
+    public static final String OAUTH_SUCCESS =
+            "OAuth authentication Successful.";
+
 
     private AlertMessage() {
         // Utility class — prevent instantiation
