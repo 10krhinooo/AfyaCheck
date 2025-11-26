@@ -142,183 +142,229 @@
             border-radius: 6px;
             font-size: 0.875rem;
         }
+
+        .consent-denied-section {
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+
+        .consent-denied-icon {
+            font-size: 4rem;
+            color: #6c757d;
+            margin-bottom: 1.5rem;
+        }
     </style>
 </head>
 <body>
 <div class="container-fluid py-4">
     <div class="results-container">
-        <!-- Header -->
-        <div class="text-center mb-5">
-            <h1 class="h2 text-dark mb-3">STI Risk Assessment Results</h1>
-            <p class="text-muted" th:if="${session != null and session.updatedAt != null}">
-                Assessment completed on <span th:text="${#temporals.format(session.updatedAt, 'MMMM dd, yyyy')}"></span> at <span th:text="${#temporals.format(session.updatedAt, 'h:mm a')}"></span>
-            </p>
-        </div>
 
-        <!-- Risk Assessment Summary -->
-        <div class="text-center mb-5">
-            <div class="risk-score-display" th:text="${riskScore != null ? riskScore + '%' : 'N/A'}">0%</div>
-            <div>
-                    <span class="risk-level-indicator"
-                          th:classappend="${riskLevel == 'Low'} ? 'risk-low' :
-                                         (${riskLevel == 'Medium'} ? 'risk-medium' : 'risk-high')"
-                          th:text="${riskLevel != null ? riskLevel + ' Risk Level' : 'Assessment Complete'}">
-                    </span>
+        <!-- Consent Denied Section -->
+        <div th:if="${consentDenied != null and consentDenied}" class="consent-denied-section">
+            <div class="consent-denied-icon">🚫</div>
+            <h1 class="h2 text-dark mb-4">Assessment Ended</h1>
+            <div class="alert alert-info mx-auto" style="max-width: 600px;">
+                <h3 class="alert-heading">Consent Not Provided</h3>
+                <p class="mb-0" th:text="${endMessage}">Thank you for your consideration. The assessment has been ended as you did not provide consent.</p>
             </div>
-            <div class="mt-3">
-                    <span th:if="${confidence != null}" class="confidence-indicator me-3">
-                        Analysis Confidence: <span th:text="${confidence}"></span>%
-                    </span>
-                <span th:if="${modelUsed != null and modelUsed}" class="model-badge">
-                        AI-Enhanced Assessment
-                    </span>
-                <span th:if="${modelUsed != null and !modelUsed}" class="model-badge" style="background: #fff3cd; color: #856404;">
-                        Standard Assessment
-                    </span>
-            </div>
-        </div>
 
-        <!-- Risk Analysis Card -->
-        <div class="results-card">
-            <h3 class="results-header">Risk Analysis Summary</h3>
-            <div class="row align-items-center">
-                <div class="col-md-11">
-                    <h4 class="h5 mb-3" th:text="${riskLevel != null ? riskLevel + ' Risk Profile' : 'Assessment Results'}"></h4>
-                    <p th:if="${riskLevel == 'Low'}" class="mb-0 text-dark">
-                        Based on your responses, your current risk factors for sexually transmitted infections are relatively low.
-                        Continue practicing safe sexual behaviors and consider routine health screenings to maintain your sexual health.
-                    </p>
-                    <p th:if="${riskLevel == 'Medium'}" class="mb-0 text-dark">
-                        Our analysis identified several factors that contribute to a moderate risk level.
-                        Implementing the recommendations below can help reduce your risk and maintain your sexual health.
-                    </p>
-                    <p th:if="${riskLevel == 'High'}" class="mb-0 text-dark">
-                        The assessment indicates an elevated risk level based on your responses.
-                        We strongly recommend consulting with a healthcare professional and following the specific recommendations provided.
-                    </p>
-                    <p th:if="${riskLevel == null}" class="mb-0 text-dark">
-                        Thank you for completing the comprehensive health assessment. Your responses have been recorded and analyzed.
-                    </p>
+            <div class="mt-5">
+                <p class="text-muted mb-4">
+                    We respect your decision. If you change your mind, you can always start a new assessment.
+                </p>
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a th:href="@{/questionnaire/start}" class="btn btn-primary-action text-white">
+                        Start New Assessment
+                    </a>
+                    <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
+                        Return to Dashboard
+                    </a>
                 </div>
             </div>
+
+            <!-- Confidentiality Notice -->
+            <div class="text-center mt-5 pt-4 border-top">
+                <small class="text-muted">
+                    Your privacy is important to us. No data was stored from this session.
+                </small>
+            </div>
         </div>
 
-        <div class="row mt-4">
-            <!-- Recommendations Section -->
-            <div class="col-lg-8">
-                <div class="results-card">
-                    <h3 class="results-header">Recommended Actions</h3>
+        <!-- Normal Results Section (only show if not consent denied) -->
+        <div th:unless="${consentDenied != null and consentDenied}">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h1 class="h2 text-dark mb-3">STI Risk Assessment Results</h1>
+                <p class="text-muted" th:if="${session != null and session.updatedAt != null}">
+                    Assessment completed on <span th:text="${#temporals.format(session.updatedAt, 'MMMM dd, yyyy')}"></span> at <span th:text="${#temporals.format(session.updatedAt, 'h:mm a')}"></span>
+                </p>
+            </div>
 
-                    <div th:if="${recommendations != null and !recommendations.empty}">
-                        <div th:each="rec, iter : ${recommendations}">
-                            <div class="recommendation-item">
-                                <div class="d-flex align-items-start">
-                                    <div class="flex-grow-1">
-                                        <h6 class="fw-semibold mb-2">
-                                            Recommendation <span th:text="${iter.index + 1}"></span>
-                                        </h6>
-                                        <p class="mb-0 text-dark" th:text="${rec}"></p>
+            <!-- Risk Assessment Summary -->
+            <div class="text-center mb-5">
+                <div class="risk-score-display" th:text="${riskScore != null ? riskScore + '%' : 'N/A'}">0%</div>
+                <div>
+                        <span class="risk-level-indicator"
+                              th:classappend="${riskLevel == 'Low'} ? 'risk-low' :
+                                             (${riskLevel == 'Medium'} ? 'risk-medium' : 'risk-high')"
+                              th:text="${riskLevel != null ? riskLevel + ' Risk Level' : 'Assessment Complete'}">
+                        </span>
+                </div>
+                <div class="mt-3">
+                        <span th:if="${confidence != null}" class="confidence-indicator me-3">
+                            Analysis Confidence: <span th:text="${confidence}"></span>%
+                        </span>
+                    <span th:if="${modelUsed != null and modelUsed}" class="model-badge">
+                            AI-Enhanced Assessment
+                        </span>
+                    <span th:if="${modelUsed != null and !modelUsed}" class="model-badge" style="background: #fff3cd; color: #856404;">
+                            Standard Assessment
+                        </span>
+                </div>
+            </div>
+
+            <!-- Risk Analysis Card -->
+            <div class="results-card">
+                <h3 class="results-header">Risk Analysis Summary</h3>
+                <div class="row align-items-center">
+                    <div class="col-md-11">
+                        <h4 class="h5 mb-3" th:text="${riskLevel != null ? riskLevel + ' Risk Profile' : 'Assessment Results'}"></h4>
+                        <p th:if="${riskLevel == 'Low'}" class="mb-0 text-dark">
+                            Based on your responses, your current risk factors for sexually transmitted infections are relatively low.
+                            Continue practicing safe sexual behaviors and consider routine health screenings to maintain your sexual health.
+                        </p>
+                        <p th:if="${riskLevel == 'Medium'}" class="mb-0 text-dark">
+                            Our analysis identified several factors that contribute to a moderate risk level.
+                            Implementing the recommendations below can help reduce your risk and maintain your sexual health.
+                        </p>
+                        <p th:if="${riskLevel == 'High'}" class="mb-0 text-dark">
+                            The assessment indicates an elevated risk level based on your responses.
+                            We strongly recommend consulting with a healthcare professional and following the specific recommendations provided.
+                        </p>
+                        <p th:if="${riskLevel == null}" class="mb-0 text-dark">
+                            Thank you for completing the comprehensive health assessment. Your responses have been recorded and analyzed.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <!-- Recommendations Section -->
+                <div class="col-lg-8">
+                    <div class="results-card">
+                        <h3 class="results-header">Recommended Actions</h3>
+
+                        <div th:if="${recommendations != null and !recommendations.empty}">
+                            <div th:each="rec, iter : ${recommendations}">
+                                <div class="recommendation-item">
+                                    <div class="d-flex align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h6 class="fw-semibold mb-2">
+                                                Recommendation <span th:text="${iter.index + 1}"></span>
+                                            </h6>
+                                            <p class="mb-0 text-dark" th:text="${rec}"></p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div th:if="${recommendations == null or recommendations.empty}" class="alert alert-info">
-                        <h6 class="alert-heading">No Specific Recommendations</h6>
-                        <p class="mb-0">Based on your assessment responses, no specific recommendations are indicated at this time. Continue practicing general sexual health safety measures.</p>
-                    </div>
+                        <div th:if="${recommendations == null or recommendations.empty}" class="alert alert-info">
+                            <h6 class="alert-heading">No Specific Recommendations</h6>
+                            <p class="mb-0">Based on your assessment responses, no specific recommendations are indicated at this time. Continue practicing general sexual health safety measures.</p>
+                        </div>
 
-                    <!-- Health Maintenance Guidelines -->
-                    <div class="mt-5">
-                        <h4 class="results-header">Health Maintenance Guidelines</h4>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <ul class="list-unstyled">
-                                    <li class="mb-3">
-                                        <strong>Protection Consistency:</strong> Use barrier methods consistently during sexual activity
-                                    </li>
-                                    <li class="mb-3">
-                                        <strong>Regular Screening:</strong> Annual STI testing recommended for sexually active individuals
-                                    </li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <ul class="list-unstyled">
-                                    <li class="mb-3">
-                                        <strong>Partner Communication:</strong> Open dialogue about sexual health with partners
-                                    </li>
-                                    <li class="mb-3">
-                                        <strong>Healthcare Consultation:</strong> Regular check-ups with healthcare providers
-                                    </li>
-                                </ul>
+                        <!-- Health Maintenance Guidelines -->
+                        <div class="mt-5">
+                            <h4 class="results-header">Health Maintenance Guidelines</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-3">
+                                            <strong>Protection Consistency:</strong> Use barrier methods consistently during sexual activity
+                                        </li>
+                                        <li class="mb-3">
+                                            <strong>Regular Screening:</strong> Annual STI testing recommended for sexually active individuals
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-3">
+                                            <strong>Partner Communication:</strong> Open dialogue about sexual health with partners
+                                        </li>
+                                        <li class="mb-3">
+                                            <strong>Healthcare Consultation:</strong> Regular check-ups with healthcare providers
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Information Panel -->
+                <div class="col-lg-4">
+                    <!-- Response Summary -->
+                    <div class="summary-panel mb-4">
+                        <h5 class="fw-semibold mb-3">Assessment Responses</h5>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            <div th:if="${answers != null and !answers.empty}">
+                                <div th:each="answer : ${answers}" class="mb-2 pb-2 border-bottom">
+                                    <small class="text-dark">
+                                        <strong th:text="${answer.key}"></strong>:
+                                        <span th:text="${answer.value}"></span>
+                                    </small>
+                                </div>
+                            </div>
+                            <div th:if="${answers == null or answers.empty}">
+                                <small class="text-muted">No response data available</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Session Information -->
+                    <div class="summary-panel" th:if="${session != null}">
+                        <h5 class="fw-semibold mb-3">Assessment Details</h5>
+                        <div class="technical-info">
+                            <strong>Session Reference:</strong><br>
+                            <code class="text-dark" th:text="${session.sessionId}"></code><br><br>
+                            <strong>Assessment Status:</strong><br>
+                            <span th:text="${session.status}"></span><br><br>
+                            <th:block th:if="${session.riskScore != null}">
+                                <strong>Calculated Risk Score:</strong><br>
+                                <span th:text="${session.riskScore} + '%'"></span>
+                            </th:block>
+                        </div>
+                    </div>
+
+                    <!-- Assessment Methodology -->
+                    <div class="technical-info mt-4">
+                        <strong>Assessment Methodology:</strong><br>
+                        This evaluation combines evidence-based medical guidelines with advanced risk analysis algorithms to provide personalized health recommendations.
                     </div>
                 </div>
             </div>
 
-            <!-- Information Panel -->
-            <div class="col-lg-4">
-                <!-- Response Summary -->
-                <div class="summary-panel mb-4">
-                    <h5 class="fw-semibold mb-3">Assessment Responses</h5>
-                    <div style="max-height: 300px; overflow-y: auto;">
-                        <div th:if="${answers != null and !answers.empty}">
-                            <div th:each="answer : ${answers}" class="mb-2 pb-2 border-bottom">
-                                <small class="text-dark">
-                                    <strong th:text="${answer.key}"></strong>:
-                                    <span th:text="${answer.value}"></span>
-                                </small>
-                            </div>
-                        </div>
-                        <div th:if="${answers == null or answers.empty}">
-                            <small class="text-muted">No response data available</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Session Information -->
-                <div class="summary-panel" th:if="${session != null}">
-                    <h5 class="fw-semibold mb-3">Assessment Details</h5>
-                    <div class="technical-info">
-                        <strong>Session Reference:</strong><br>
-                        <code class="text-dark" th:text="${session.sessionId}"></code><br><br>
-                        <strong>Assessment Status:</strong><br>
-                        <span th:text="${session.status}"></span><br><br>
-                        <th:block th:if="${session.riskScore != null}">
-                            <strong>Calculated Risk Score:</strong><br>
-                            <span th:text="${session.riskScore} + '%'"></span>
-                        </th:block>
-                    </div>
-                </div>
-
-                <!-- Assessment Methodology -->
-                <div class="technical-info mt-4">
-                    <strong>Assessment Methodology:</strong><br>
-                    This evaluation combines evidence-based medical guidelines with advanced risk analysis algorithms to provide personalized health recommendations.
-                </div>
+            <!-- Action Section -->
+            <div class="text-center mt-5 pt-4 border-top">
+                <a th:href="@{/questionnaire/start}" class="btn btn-primary-action text-white me-3">
+                    Begin New Assessment
+                </a>
+                <button class="btn btn-outline-secondary me-3" onclick="window.print()">
+                    Print Results
+                </button>
+                <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
+                    Return to Dashboard
+                </a>
             </div>
-        </div>
 
-        <!-- Action Section -->
-        <div class="text-center mt-5 pt-4 border-top">
-            <a th:href="@{/questionnaire/start}" class="btn btn-primary-action text-white me-3">
-                Begin New Assessment
-            </a>
-            <button class="btn btn-outline-secondary me-3" onclick="window.print()">
-                Print Results
-            </button>
-            <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
-                Return to Dashboard
-            </a>
-        </div>
-
-        <!-- Confidentiality Notice -->
-        <div class="text-center mt-4 pt-3 border-top">
-            <small class="text-muted">
-                Confidential Assessment | All data encrypted and anonymized | Professional healthcare consultation recommended for medical advice
-            </small>
+            <!-- Confidentiality Notice -->
+            <div class="text-center mt-4 pt-3 border-top">
+                <small class="text-muted">
+                    Confidential Assessment | All data encrypted and anonymized | Professional healthcare consultation recommended for medical advice
+                </small>
+            </div>
         </div>
     </div>
 </div>
@@ -332,31 +378,34 @@
 
     // Smooth animations for results display
     document.addEventListener('DOMContentLoaded', function() {
-        // Animate risk score appearance
-        const riskScore = document.querySelector('.risk-score-display');
-        if (riskScore) {
-            riskScore.style.opacity = '0';
-            riskScore.style.transform = 'scale(0.8)';
+        // Only run animations if we're not in consent denied mode
+        if (!document.querySelector('.consent-denied-section')) {
+            // Animate risk score appearance
+            const riskScore = document.querySelector('.risk-score-display');
+            if (riskScore) {
+                riskScore.style.opacity = '0';
+                riskScore.style.transform = 'scale(0.8)';
 
-            setTimeout(() => {
-                riskScore.style.transition = 'all 0.8s ease';
-                riskScore.style.opacity = '1';
-                riskScore.style.transform = 'scale(1)';
-            }, 300);
+                setTimeout(() => {
+                    riskScore.style.transition = 'all 0.8s ease';
+                    riskScore.style.opacity = '1';
+                    riskScore.style.transform = 'scale(1)';
+                }, 300);
+            }
+
+            // Stagger recommendation animations
+            const recommendations = document.querySelectorAll('.recommendation-item');
+            recommendations.forEach((item, index) => {
+                item.style.opacity = '0';
+                item.style.transform = 'translateX(-20px)';
+
+                setTimeout(() => {
+                    item.style.transition = 'all 0.5s ease';
+                    item.style.opacity = '1';
+                    item.style.transform = 'translateX(0)';
+                }, 500 + (index * 100));
+            });
         }
-
-        // Stagger recommendation animations
-        const recommendations = document.querySelectorAll('.recommendation-item');
-        recommendations.forEach((item, index) => {
-            item.style.opacity = '0';
-            item.style.transform = 'translateX(-20px)';
-
-            setTimeout(() => {
-                item.style.transition = 'all 0.5s ease';
-                item.style.opacity = '1';
-                item.style.transform = 'translateX(0)';
-            }, 500 + (index * 100));
-        });
     });
 </script>
 </body>

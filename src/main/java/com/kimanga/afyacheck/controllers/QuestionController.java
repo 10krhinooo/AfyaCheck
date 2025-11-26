@@ -2,17 +2,14 @@ package com.kimanga.afyacheck.controllers;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.kimanga.afyacheck.service.DecisionService;
 import com.kimanga.afyacheck.service.SessionService;
-
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Controller
 @RequestMapping("/questionnaire")
@@ -36,9 +33,17 @@ public class QuestionController {
 
             logger.info("Starting questionnaire for session: {} (created: {})", sessionId, createdSessionId);
 
-            // Initialize with empty answers map
+            // Initialize with empty answers map - will start with consent
             Map<String, String> initialAnswers = new HashMap<>();
-            Map<String, Object> firstQuestion = new HashMap<>(decisionService.getNextQuestion(initialAnswers));
+            initialAnswers.put("_sessionId", createdSessionId);
+
+            Map<String, Object> firstQuestion = decisionService.getNextQuestion(initialAnswers);
+
+            if (firstQuestion.containsKey("options") && firstQuestion.get("options") instanceof String) {
+                String optionsString = (String) firstQuestion.get("options");
+                List<String> optionsList = convertOptionsStringToList(optionsString);
+                firstQuestion.put("options", optionsList);
+            }
 
             logger.info("Received question data - keys: {}, has error: {}",
                     firstQuestion.keySet(), firstQuestion.containsKey("error"));
@@ -51,8 +56,6 @@ public class QuestionController {
                 return "error-page";
             }
 
-            Map<String, Object> ensuredQuestion = ensureQuestionStructure(firstQuestion, "Start Question");
-
             // Ensure answers is never null
             Map<String, String> safeAnswers = sessionService.getCurrentAnswers(createdSessionId);
             if (safeAnswers == null) {
@@ -60,9 +63,9 @@ public class QuestionController {
                 logger.info("Initialized empty answers for new session");
             }
 
-            model.addAttribute("question", ensuredQuestion);
+            model.addAttribute("question", firstQuestion);
             model.addAttribute("sessionId", createdSessionId);
-            model.addAttribute("answers", safeAnswers); // Use safe, non-null answers
+            model.addAttribute("answers", safeAnswers);
             model.addAttribute("canGoBack", false);
 
             return "questionnaire";
@@ -82,21 +85,15 @@ public class QuestionController {
 
         try {
             logger.info("Processing next question for session: {}", sessionId);
-
-            // Clean the session ID
             String cleanSessionId = cleanSessionId(sessionId);
 
-            // Get current answers - ensure non-null
             Map<String, String> answers = sessionService.getCurrentAnswers(cleanSessionId);
             if (answers == null) {
                 answers = new HashMap<>();
-                logger.info("Initialized empty answers for session: {}", cleanSessionId);
             }
 
-            // Save the new answers
             sessionService.saveAnswers(cleanSessionId, formParams);
 
-            // Update answers with new form params (excluding sessionId)
             Map<String, String> updatedAnswers = new HashMap<>(answers);
             for (Map.Entry<String, String> entry : formParams.entrySet()) {
                 if (!"sessionId".equals(entry.getKey())) {
@@ -104,43 +101,90 @@ public class QuestionController {
                 }
             }
 
+            updatedAnswers.put("_sessionId", cleanSessionId);
+
             Map<String, Object> nextStep = decisionService.getNextQuestion(updatedAnswers);
 
-            Map<String, Object> ensuredQuestion = ensureQuestionStructure(nextStep, "Next Question");
+            if (nextStep.containsKey("options") && nextStep.get("options") instanceof String) {
+                String optionsString = (String) nextStep.get("options");
+                List<String> optionsList = convertOptionsStringToList(optionsString);
+                nextStep.put("options", optionsList);
+            }
 
-            if (ensuredQuestion.containsKey("end") && Boolean.TRUE.equals(ensuredQuestion.get("end"))) {
-                logger.info("Survey ended for session: {}", cleanSessionId);
+            if (nextStep.containsKey("end") && Boolean.TRUE.equals(nextStep.get("end"))) {
+                logger.info("Survey ended for session: {} with {} questions answered",
+                        cleanSessionId, updatedAnswers.size());
 
-                // Check if we have risk assessment data
-                if (ensuredQuestion.containsKey("riskScore")) {
-                    // Save risk assessment to database
+                // FIXED: Handle consent denied properly
+                if (Boolean.TRUE.equals(nextStep.get("consentDenied"))) {
+                    // Save consent denied as a completed session
+                    sessionService.completeSession(cleanSessionId);
+
+                    // Add consent denied message to model
+                    model.addAttribute("endMessage", nextStep.get("text"));
+                    model.addAttribute("consentDenied", true);
+                    model.addAttribute("sessionId", cleanSessionId);
+                    model.addAttribute("session", sessionService.getSessionWithDetails(cleanSessionId));
+
+                    // Return results page with consent denied message
+                    return "results";
+                }
+
+                // Convert recommendations String to List for the template
+                List<String> recommendationsList = new ArrayList<>();
+                if (nextStep.containsKey("recommendations")) {
+                    String recommendationsStr = (String) nextStep.get("recommendations");
+                    if (recommendationsStr != null && !recommendationsStr.isEmpty()) {
+                        // Split by semicolon (as used in DecisionService)
+                        recommendationsList = Arrays.asList(recommendationsStr.split("; "));
+                    }
+                }
+
+                if (nextStep.containsKey("riskScore")) {
+                    // For SessionService - keep as String or convert to List based on what it expects
+                    String recommendationsStr = (String) nextStep.get("recommendations");
+
                     sessionService.saveRiskAssessment(
                             cleanSessionId,
-                            (String) ensuredQuestion.get("riskLevel"),
-                            (Integer) ensuredQuestion.get("riskScore"),
-                            (java.util.List<String>) ensuredQuestion.get("recommendations")
+                            (String) nextStep.get("riskLevel"),
+                            (Integer) nextStep.get("riskScore"),
+                            recommendationsStr // Pass as String to SessionService
                     );
 
-                    // Add data to model for results page
-                    model.addAttribute("riskScore", ensuredQuestion.get("riskScore"));
-                    model.addAttribute("riskLevel", ensuredQuestion.get("riskLevel"));
-                    model.addAttribute("recommendations", ensuredQuestion.get("recommendations"));
-                    model.addAttribute("endMessage", ensuredQuestion.get("text"));
+                    model.addAttribute("riskScore", nextStep.get("riskScore"));
+                    model.addAttribute("riskLevel", nextStep.get("riskLevel"));
+                    model.addAttribute("recommendations", recommendationsList); // Pass as List to template
+                    model.addAttribute("endMessage", nextStep.get("text"));
+                    model.addAttribute("confidence", nextStep.get("confidence"));
+                    model.addAttribute("modelUsed", nextStep.get("modelUsed"));
+                    model.addAttribute("questionsAnswered", updatedAnswers.size());
 
                 } else {
-                    // No risk assessment data - calculate it
                     Map<String, Object> riskAssessment = decisionService.calculateRiskScore(updatedAnswers);
+
+                    // Convert for template
+                    List<String> fallbackRecommendations = new ArrayList<>();
+                    if (riskAssessment.containsKey("recommendations")) {
+                        String recsStr = (String) riskAssessment.get("recommendations");
+                        if (recsStr != null && !recsStr.isEmpty()) {
+                            fallbackRecommendations = Arrays.asList(recsStr.split("; "));
+                        }
+                    }
+
                     sessionService.saveRiskAssessment(
                             cleanSessionId,
                             (String) riskAssessment.get("riskLevel"),
                             (Integer) riskAssessment.get("riskScore"),
-                            (java.util.List<String>) riskAssessment.get("recommendations")
+                            (String) riskAssessment.get("recommendations") // Pass as String to SessionService
                     );
 
                     model.addAttribute("riskScore", riskAssessment.get("riskScore"));
                     model.addAttribute("riskLevel", riskAssessment.get("riskLevel"));
-                    model.addAttribute("recommendations", riskAssessment.get("recommendations"));
+                    model.addAttribute("recommendations", fallbackRecommendations); // Pass as List to template
                     model.addAttribute("endMessage", "Thank you for completing the STI risk assessment!");
+                    model.addAttribute("confidence", riskAssessment.get("confidence"));
+                    model.addAttribute("modelUsed", riskAssessment.get("modelUsed"));
+                    model.addAttribute("questionsAnswered", updatedAnswers.size());
                 }
 
                 model.addAttribute("session", sessionService.getSessionWithDetails(cleanSessionId));
@@ -148,9 +192,9 @@ public class QuestionController {
 
                 return "results";
             } else {
-                model.addAttribute("question", ensuredQuestion);
+                model.addAttribute("question", nextStep);
                 model.addAttribute("sessionId", cleanSessionId);
-                model.addAttribute("answers", updatedAnswers); // This should never be null now
+                model.addAttribute("answers", updatedAnswers);
                 model.addAttribute("canGoBack", true);
 
                 return "questionnaire";
@@ -184,13 +228,19 @@ public class QuestionController {
                 logger.info("Initialized empty answers for back navigation");
             }
 
+            // Add session ID for decision service
+            previousAnswers.put("_sessionId", cleanSessionId);
+
             // Get the previous question based on remaining answers
             Map<String, Object> previousQuestion = decisionService.getNextQuestion(previousAnswers);
 
-            // Ensure the question structure is proper
-            Map<String, Object> ensuredQuestion = ensureQuestionStructure(previousQuestion, "Back Navigation");
+            if (previousQuestion.containsKey("options") && previousQuestion.get("options") instanceof String) {
+                String optionsString = (String) previousQuestion.get("options");
+                List<String> optionsList = convertOptionsStringToList(optionsString);
+                previousQuestion.put("options", optionsList);
+            }
 
-            model.addAttribute("question", ensuredQuestion);
+            model.addAttribute("question", previousQuestion);
             model.addAttribute("sessionId", cleanSessionId);
             model.addAttribute("answers", previousAnswers);
             model.addAttribute("canGoBack", !previousAnswers.isEmpty());
@@ -233,62 +283,23 @@ public class QuestionController {
 
         return trimmed;
     }
-
-    /**
-     * Fixed version - returns a new mutable map instead of modifying the original
-     */
-    private Map<String, Object> ensureQuestionStructure(Map<String, Object> question, String context) {
-        if (question == null) {
-            logger.warn("{} is null", context);
-            return createDefaultQuestion();
+    private List<String> convertOptionsStringToList(String optionsString) {
+        if (optionsString == null || optionsString.trim().isEmpty()) {
+            return new ArrayList<>();
         }
-
-        // Always create a new mutable HashMap to avoid UnsupportedOperationException
-        Map<String, Object> mutableQuestion = new HashMap<>(question);
-
-        // Handle text/question field mapping
-        if (!mutableQuestion.containsKey("text") && mutableQuestion.containsKey("question")) {
-            mutableQuestion.put("text", mutableQuestion.get("question"));
-        }
-
-        // Ensure required fields with defaults
-        mutableQuestion.putIfAbsent("sectionTitle", "Health Assessment");
-        mutableQuestion.putIfAbsent("progress", 0);
-        mutableQuestion.putIfAbsent("questionIndex", 1);
-        mutableQuestion.putIfAbsent("totalQuestions", 10);
-        mutableQuestion.putIfAbsent("end", false);
-        mutableQuestion.putIfAbsent("type", "radio");
-
-        // Ensure key field exists
-        if (!mutableQuestion.containsKey("key") && mutableQuestion.containsKey("id")) {
-            mutableQuestion.put("key", mutableQuestion.get("id"));
-        }
-
-        logger.info("{} structure ensured - keys: {}", context, mutableQuestion.keySet());
-
-        return mutableQuestion;
-    }
-
-    /**
-     * Create a default question structure for error cases
-     */
-    private Map<String, Object> createDefaultQuestion() {
-        Map<String, Object> defaultQuestion = new HashMap<>();
-        defaultQuestion.put("text", "Please answer the following question:");
-        defaultQuestion.put("sectionTitle", "Health Assessment");
-        defaultQuestion.put("progress", 0);
-        defaultQuestion.put("questionIndex", 1);
-        defaultQuestion.put("totalQuestions", 10);
-        defaultQuestion.put("end", false);
-        defaultQuestion.put("type", "radio");
-        defaultQuestion.put("key", "default");
-        return defaultQuestion;
+        return Arrays.asList(optionsString.split(","));
     }
 
     @GetMapping("/debug/database-status")
     @ResponseBody
     public Map<String, Object> debugDatabaseStatus() {
         return decisionService.debugDatabaseStatus();
+    }
+
+    @GetMapping("/debug/questions")
+    @ResponseBody
+    public Map<String, Object> debugQuestions() {
+        return decisionService.debugQuestionDatabase();
     }
 
     // REST API endpoints
@@ -305,11 +316,6 @@ public class QuestionController {
         @PostMapping("/next")
         public Map<String, Object> next(@RequestBody Map<String, String> answers) {
             return decisionService.getNextQuestion(answers);
-        }
-
-        @PostMapping("/debug/consent")
-        public Map<String, Object> debugConsent(@RequestBody Map<String, String> answers) {
-            return decisionService.debugConsentFlow(answers);
         }
 
         @GetMapping("/status")
