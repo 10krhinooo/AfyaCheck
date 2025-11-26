@@ -304,7 +304,7 @@ public class SessionService {
     }
 
     @Transactional
-    public void saveRiskAssessment(String sessionId, String riskLevel, Integer riskScore, List<String> recommendations) {
+    public void saveRiskAssessment(String sessionId, String riskLevel, Integer riskScore, String recommendations) {
         try {
             String safeSessionId = createSafeSessionId(sessionId);
             logger.info("Saving risk assessment for session: {}, risk level: {}, score: {}",
@@ -326,7 +326,14 @@ public class SessionService {
             assessment.setSession(session);
             assessment.setRiskLevel(riskLevel);
             assessment.setRiskScore(riskScore);
-            assessment.setRecommendations(recommendations != null ? recommendations : new ArrayList<>());
+
+            // Convert String to List<String> for JSON storage
+            List<String> recommendationsList = new ArrayList<>();
+            if (recommendations != null && !recommendations.trim().isEmpty()) {
+                // Split by semicolon (as used in DecisionService)
+                recommendationsList = Arrays.asList(recommendations.split("; "));
+            }
+            assessment.setRecommendations(recommendationsList);
 
             riskAssessmentRepository.save(assessment);
 

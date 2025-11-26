@@ -1,0 +1,23 @@
+{
+  "feature_columns": [
+    "age",
+    "marital_status",
+    "education",
+    "wealth_index",
+    "hiv_tested",
+    "sexual_partners",
+    "condom_use"
+  ],
+  "model_type": "xgboost",
+  "model_version": "1.0.0",
+  "training_date": "2024-01-01",
+  "feature_descriptions": {
+    "age": "Age in years (15-65)",
+    "marital_status": "Marital status category",
+    "education": "Education level category",
+    "wealth_index": "Wealth index category",
+    "hiv_tested": "Whether previously tested for HIV",
+    "sexual_partners": "Number of sexual partners",
+    "condom_use": "Frequency of condom use"
+  }
+}

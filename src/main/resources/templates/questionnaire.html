@@ -176,7 +176,7 @@
                                th:name="${question.key}"
                                th:value="${answers != null ? answers[question.key] : ''}"
                                class="form-control form-control-lg"
-                               th:attr="min=${question.min}, max=${question.max}"
+                               th:attr="min=${question.validation?.min}, max=${question.validation?.max}"
                                placeholder="Enter numerical value"
                                style="padding: 1rem;">
                     </div>
@@ -226,7 +226,7 @@
                         </form>
                     </div>
                     <div th:unless="${canGoBack}">
-                        <a th:href="@{/}" class="btn btn-outline-secondary">Exit Assessment</a>
+                        <a th:href="@{/dashboard}" class="btn btn-outline-secondary">Exit Assessment</a>
                     </div>
                 </div>
 

@@ -1,3 +1,4 @@
+# ml_service_fixed.py (Zero-Encoding Version for Port 8000)
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -15,14 +16,14 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="HIV Risk Prediction API",
-    description="ML Service for HIV Risk Prediction",
-    version="1.0.0"
+    description="ML Service for HIV Risk Prediction with Zero-Encoding",
+    version="2.0.0"  # Updated version
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,9 +55,12 @@ class HealthResponse(BaseModel):
 class HIVRiskPredictor:
     def __init__(self, model_path: str = 'xgboost_model.json'):
         self.model = self.load_model(model_path)
+
+        # EXPANDED feature columns to include sexual_activity and other risk factors
         self.feature_columns = [
             'age', 'marital_status', 'education', 'wealth_index',
-            'hiv_tested', 'sexual_partners', 'condom_use'
+            'hiv_tested', 'sexual_partners', 'condom_use', 'sexual_activity',
+            'recent_partners', 'high_risk_partner', 'sti_symptoms', 'previous_sti', 'transactional_sex'
         ]
 
         # Try to load feature columns from model info
@@ -66,21 +70,27 @@ class HIVRiskPredictor:
                 self.feature_columns = model_info.get('feature_columns', self.feature_columns)
                 logger.info(f"Loaded feature columns from model_info.json: {self.feature_columns}")
         except Exception as e:
-            logger.warning(f"Could not load model_info.json: {e}. Using default feature columns.")
+            logger.warning(f"Could not load model_info.json: {e}. Using expanded feature columns.")
 
         # Define categorical value mappings
         self.marital_status_mapping = {
-            'never_married': 0, 'married': 1, 'divorced': 2, 'widowed': 3, 'separated': 4
+            'never_married': 0, 'married': 1, 'divorced': 2, 'widowed': 3, 'separated': 4,
+            'single': 0, 'living with partner': 1
         }
         self.education_mapping = {
-            'no_education': 0, 'primary': 1, 'secondary': 2, 'higher': 3
+            'no_education': 0, 'primary': 1, 'secondary': 2, 'higher': 3,
+            'no formal education': 0, 'primary school': 1, 'secondary school': 2,
+            'high school': 2, 'college/university': 3, 'postgraduate': 3
         }
         self.wealth_index_mapping = {
-            'poorest': 0, 'poorer': 1, 'middle': 2, 'richer': 3, 'richest': 4
+            'poorest': 0, 'poorer': 1, 'middle': 2, 'richer': 3, 'richest': 4,
+            'low income': 0, 'lower middle income': 1, 'middle income': 2,
+            'upper middle income': 3, 'high income': 4
         }
         self.hiv_tested_mapping = {'no': 0, 'yes': 1}
         self.sexual_partners_mapping = {'0': 0, '1': 1, '2': 2, '3+': 3}
-        self.condom_use_mapping = {'never': 0, 'sometimes': 1, 'always': 2}
+        self.condom_use_mapping = {'never': 2, 'sometimes': 1, 'always': 0}  # FIXED: Always = lowest risk
+        self.yes_no_mapping = {'no': 0, 'yes': 1}
 
         logger.info(f"HIVRiskPredictor initialized with model path: {model_path}")
         logger.info(f"Model loaded: {self.model is not None}")
@@ -168,8 +178,22 @@ class HIVRiskPredictor:
             return None
 
     def preprocess_features(self, answers: Dict[str, str]) -> List[int]:
-        """Convert form answers to model features"""
+        """Convert form answers to model features with enhanced zero-encoding"""
         features = {}
+
+        # CRITICAL: Check if user is sexually active
+        sexual_activity = answers.get('sexual_activity', 'no').lower()
+        is_not_sexually_active = sexual_activity == 'no'
+
+        # List of sexual risk questions that should be zeroed if not sexually active
+        SEXUAL_RISK_KEYS = [
+            'sexual_partners', 'recent_partners', 'condom_use', 'high_risk_partner',
+            'sti_symptoms', 'previous_sti', 'transactional_sex'
+        ]
+
+        logger.info(f"=== ZERO-ENCODING DEBUG ===")
+        logger.info(f"User sexual_activity: {sexual_activity}")
+        logger.info(f"Is NOT sexually active: {is_not_sexually_active}")
 
         # Age (numeric)
         age = answers.get('age', '30')
@@ -180,7 +204,7 @@ class HIVRiskPredictor:
             logger.warning(f"Invalid age value: {age}, using default: 30")
 
         # Marital Status (categorical)
-        marital_status = answers.get('marital_status', 'never_married').lower()
+        marital_status = answers.get('marital_status', 'single').lower()
         features['marital_status'] = self.marital_status_mapping.get(marital_status, 0)
 
         # Education Level (categorical)
@@ -195,22 +219,94 @@ class HIVRiskPredictor:
         hiv_tested = answers.get('hiv_tested', 'no').lower()
         features['hiv_tested'] = self.hiv_tested_mapping.get(hiv_tested, 0)
 
-        # Number of Sexual Partners (categorical)
-        sexual_partners = answers.get('sexual_partners', '1').lower()
-        features['sexual_partners'] = self.sexual_partners_mapping.get(sexual_partners, 1)
+        # --- CRITICAL FIX: Zero out sexual risk factors if not sexually active ---
+        # Number of Sexual Partners (categorical) - FIXED FOR NUMERIC VALUES
+        sexual_partners = answers.get('sexual_partners', '0').lower()
+        if is_not_sexually_active:
+            features['sexual_partners'] = 0  # Force zero partners
+            logger.info("🔒 ZEROING sexual_partners due to no sexual activity")
+        else:
+            # FIX: Handle numeric values above the mapping
+            if sexual_partners.isdigit():
+                partners_count = int(sexual_partners)
+                if partners_count >= 3:
+                    features['sexual_partners'] = 3  # Map to '3+'
+                else:
+                    features['sexual_partners'] = partners_count
+            else:
+                features['sexual_partners'] = self.sexual_partners_mapping.get(sexual_partners, 0)
+            logger.info(f"✅ Sexual partners: {features['sexual_partners']} (from input: {sexual_partners})")
 
         # Condom Use Frequency (categorical)
-        condom_use = answers.get('condom_use', 'sometimes').lower()
-        features['condom_use'] = self.condom_use_mapping.get(condom_use, 1)
+        condom_use = answers.get('condom_use', 'always').lower()
+        if is_not_sexually_active:
+            features['condom_use'] = 0  # Force lowest risk (always)
+            logger.info("🔒 ZEROING condom_use due to no sexual activity")
+        else:
+            features['condom_use'] = self.condom_use_mapping.get(condom_use, 0)
+            logger.info(f"✅ Condom use: {features['condom_use']} (from input: {condom_use})")
+
+        # Sexual Activity (categorical)
+        features['sexual_activity'] = self.yes_no_mapping.get(sexual_activity, 0)
+        logger.info(f"✅ Sexual activity encoded: {features['sexual_activity']}")
+
+        # Recent Partners (numeric/categorical)
+        recent_partners = answers.get('recent_partners', '0')
+        if is_not_sexually_active:
+            features['recent_partners'] = 0
+            logger.info("🔒 ZEROING recent_partners due to no sexual activity")
+        else:
+            try:
+                features['recent_partners'] = int(recent_partners) if recent_partners.isdigit() else 0
+            except ValueError:
+                features['recent_partners'] = 0
+            logger.info(f"✅ Recent partners: {features['recent_partners']}")
+
+        # High Risk Partner (categorical)
+        high_risk_partner = answers.get('high_risk_partner', 'no').lower()
+        if is_not_sexually_active:
+            features['high_risk_partner'] = 0
+            logger.info("🔒 ZEROING high_risk_partner due to no sexual activity")
+        else:
+            features['high_risk_partner'] = self.yes_no_mapping.get(high_risk_partner, 0)
+            logger.info(f"✅ High risk partner: {features['high_risk_partner']}")
+
+        # STI Symptoms (categorical)
+        sti_symptoms = answers.get('sti_symptoms', 'no').lower()
+        if is_not_sexually_active:
+            features['sti_symptoms'] = 0
+            logger.info("🔒 ZEROING sti_symptoms due to no sexual activity")
+        else:
+            features['sti_symptoms'] = self.yes_no_mapping.get(sti_symptoms, 0)
+            logger.info(f"✅ STI symptoms: {features['sti_symptoms']}")
+
+        # Previous STI (categorical)
+        previous_sti = answers.get('previous_sti', 'no').lower()
+        if is_not_sexually_active:
+            features['previous_sti'] = 0
+            logger.info("🔒 ZEROING previous_sti due to no sexual activity")
+        else:
+            features['previous_sti'] = self.yes_no_mapping.get(previous_sti, 0)
+            logger.info(f"✅ Previous STI: {features['previous_sti']}")
+
+        # Transactional Sex (categorical)
+        transactional_sex = answers.get('transactional_sex', 'no').lower()
+        if is_not_sexually_active:
+            features['transactional_sex'] = 0
+            logger.info("🔒 ZEROING transactional_sex due to no sexual activity")
+        else:
+            features['transactional_sex'] = self.yes_no_mapping.get(transactional_sex, 0)
+            logger.info(f"✅ Transactional sex: {features['transactional_sex']}")
 
         # Ensure all feature columns are present in correct order
         feature_vector = [features.get(col, 0) for col in self.feature_columns]
 
-        logger.debug(f"Preprocessed features: {feature_vector}")
+        logger.info(f"Final feature vector: {feature_vector}")
+        logger.info(f"=== END ZERO-ENCODING DEBUG ===")
         return feature_vector
 
     def predict(self, answers: Dict[str, str]) -> Dict[str, Any]:
-        """Make prediction using the ML model"""
+        """Make prediction using the ML model with enhanced logic"""
         if self.model is None:
             logger.warning("ML model not available, using fallback prediction")
             return self.fallback_prediction(answers)
@@ -224,17 +320,24 @@ class HIVRiskPredictor:
                 prediction = self.model.predict_proba(features_array)[0]
                 hiv_probability = float(prediction[1])  # Probability of HIV positive
                 confidence = float(np.max(prediction))
-                logger.debug(f"Using predict_proba - probabilities: {prediction}")
+                logger.info(f"Model probabilities: {prediction}")
             else:
                 # Fallback for models without predict_proba
                 prediction = self.model.predict(features_array)[0]
                 hiv_probability = float(prediction)
                 confidence = 0.85
-                logger.debug(f"Using predict - raw prediction: {prediction}")
+                logger.info(f"Model raw prediction: {prediction}")
+
+            # CRITICAL FIX: If not sexually active, cap the probability
+            is_not_sexually_active = answers.get('sexual_activity', 'no').lower() == 'no'
+            if is_not_sexually_active:
+                original_probability = hiv_probability
+                hiv_probability = min(hiv_probability, 0.1)  # Max 10% probability if not sexually active
+                logger.info(f"🔒 USER NOT SEXUALLY ACTIVE - Capping probability from {original_probability:.3f} to {hiv_probability:.3f}")
 
             risk_score = int(hiv_probability * 100)
 
-            logger.info(f"ML prediction - Probability: {hiv_probability:.3f}, Risk Score: {risk_score}, Confidence: {confidence:.3f}")
+            logger.info(f"🎯 FINAL ML PREDICTION - Probability: {hiv_probability:.3f}, Risk Score: {risk_score}, Confidence: {confidence:.3f}")
 
             return {
                 'hivProbability': hiv_probability,
@@ -248,11 +351,26 @@ class HIVRiskPredictor:
             return self.fallback_prediction(answers)
 
     def fallback_prediction(self, answers: Dict[str, str]) -> Dict[str, Any]:
-        """Fallback rule-based prediction"""
-        logger.info("Using fallback rule-based prediction")
+        """Fallback rule-based prediction with enhanced zero-encoding"""
+        logger.info("Using enhanced fallback rule-based prediction")
+
+        # CRITICAL: Check if user is sexually active
+        is_not_sexually_active = answers.get('sexual_activity', 'no').lower() == 'no'
+
+        if is_not_sexually_active:
+            logger.info("🔒 USER NOT SEXUALLY ACTIVE - Returning minimal risk score")
+            return {
+                'hivProbability': 0.05,  # 5% baseline probability
+                'riskScore': 5,
+                'confidence': 0.90,
+                'features_used': 0,
+                'model_used': False
+            }
+
+        # Only calculate risk if sexually active
         risk_score = 0
 
-        # Simple rule-based scoring
+        # Simple rule-based scoring (only for sexually active users)
         age = answers.get('age', '30')
         try:
             age_int = int(age)
@@ -261,21 +379,44 @@ class HIVRiskPredictor:
         except ValueError:
             pass
 
+        # FIXED: Handle numeric sexual partners in fallback
         sexual_partners = answers.get('sexual_partners', '1')
-        if sexual_partners == '3+':
-            risk_score += 30
-        elif sexual_partners == '2':
-            risk_score += 15
+        if sexual_partners.isdigit():
+            partners_count = int(sexual_partners)
+            if partners_count >= 3:
+                risk_score += 30
+            elif partners_count == 2:
+                risk_score += 15
+        else:
+            if sexual_partners == '3+':
+                risk_score += 30
+            elif sexual_partners == '2':
+                risk_score += 15
 
         condom_use = answers.get('condom_use', 'sometimes')
         if condom_use == 'never':
             risk_score += 25
+        elif condom_use == 'always':
+            risk_score -= 10  # Reward consistent condom use
 
         hiv_tested = answers.get('hiv_tested', 'no')
         if hiv_tested == 'no':
             risk_score += 10
 
-        risk_score = min(risk_score, 100)
+        # Additional risk factors
+        high_risk_partner = answers.get('high_risk_partner', 'no')
+        if high_risk_partner == 'yes':
+            risk_score += 20
+
+        sti_symptoms = answers.get('sti_symptoms', 'no')
+        if sti_symptoms == 'yes':
+            risk_score += 25
+
+        previous_sti = answers.get('previous_sti', 'no')
+        if previous_sti == 'yes':
+            risk_score += 15
+
+        risk_score = max(0, min(risk_score, 100))  # Ensure between 0-100
 
         logger.info(f"Fallback prediction - Risk Score: {risk_score}")
 
@@ -314,9 +455,9 @@ if predictor is None or predictor.model is None:
 
 def get_risk_level(score: int) -> str:
     """Determine risk level based on score"""
-    if score >= 15:
+    if score >= 50:
         return "High"
-    elif score >= 8:
+    elif score >= 25:
         return "Medium"
     else:
         return "Low"
@@ -325,15 +466,27 @@ def generate_recommendations(risk_score: int, answers: Dict[str, str]) -> List[s
     """Generate recommendations based on risk score and answers"""
     recommendations = []
 
-    # Base recommendations based on risk score
-    if risk_score >=50:
+    # Check if user is sexually active
+    is_not_sexually_active = answers.get('sexual_activity', 'no').lower() == 'no'
+
+    if is_not_sexually_active:
+        recommendations.extend([
+            "Low risk profile: No current sexual activity reported",
+            "Consider baseline HIV testing for future reference",
+            "Regular health check-ups support overall wellness",
+            "Open communication with future partners about sexual health"
+        ])
+        return recommendations
+
+    # Base recommendations based on risk score (only for sexually active users)
+    if risk_score >= 50:
         recommendations.extend([
             "High risk detected: Consider immediate HIV testing and counseling",
             "Consult healthcare provider for comprehensive STI screening",
             "Discuss PrEP (Pre-Exposure Prophylaxis) options with your doctor",
             "Regular testing every 3-6 months strongly recommended"
         ])
-    elif risk_score >=200:
+    elif risk_score >= 25:
         recommendations.extend([
             "Moderate risk: Schedule HIV testing at your earliest convenience",
             "Consider routine STI screening during next healthcare visit",
@@ -354,20 +507,15 @@ def generate_recommendations(risk_score: int, answers: Dict[str, str]) -> List[s
         recommendations.append("Consistent condom use can significantly reduce HIV transmission risk")
 
     sexual_partners = answers.get('sexual_partners', '').lower()
-    if sexual_partners == '3+':
+    if sexual_partners.isdigit():
+        if int(sexual_partners) >= 3:
+            recommendations.append("Multiple partners increase risk; consider more frequent testing")
+    elif sexual_partners == '3+':
         recommendations.append("Multiple partners increase risk; consider more frequent testing")
 
     hiv_tested = answers.get('hiv_tested', '').lower()
     if hiv_tested == 'no':
         recommendations.append("Getting tested provides important health information and peace of mind")
-
-    age = answers.get('age', '30')
-    try:
-        age_int = int(age)
-        if age_int >= 35:
-            recommendations.append("Older age groups may benefit from regular screening as part of routine healthcare")
-    except ValueError:
-        pass
 
     return recommendations
 
@@ -376,9 +524,10 @@ async def root():
     """Root endpoint with API information"""
     model_status = "loaded" if predictor.model is not None else "fallback only"
     return {
-        "message": "HIV Risk Prediction API",
-        "version": "1.0.0",
+        "message": "HIV Risk Prediction API v2.0 (Enhanced Zero-Encoding)",
+        "version": "2.0.0",
         "model_status": model_status,
+        "enhanced_features": "Zero-encoding for non-sexually active users",
         "documentation": "/docs",
         "health_check": "/health"
     }
@@ -389,41 +538,21 @@ async def health_check():
     return HealthResponse(
         status="healthy",
         model_loaded=predictor.model is not None,
-        model_name="XGBoost (Non-Imputed)" if predictor.model is not None else "Rule-Based Fallback",
+        model_name="XGBoost (Enhanced)" if predictor.model is not None else "Rule-Based Fallback",
         features=predictor.feature_columns,
         timestamp=datetime.now().isoformat()
     )
 
 @app.post("/predict", response_model=PredictionResponse, summary="Predict HIV risk")
 async def predict(request: PredictionRequest):
-    """Predict HIV risk based on user answers"""
+    """Predict HIV risk based on user answers with enhanced zero-encoding"""
     try:
         answers = request.answers
-        logger.info(f"Received prediction request with answers: {answers}")
+        logger.info(f"📥 Received prediction request with answers: {answers}")
 
-        # Validate required fields
-        required_fields = [
-            'age', 'marital_status', 'education', 'wealth_index',
-            'hiv_tested', 'sexual_partners', 'condom_use'
-        ]
-
-        missing_fields = [field for field in required_fields if field not in answers]
-        if missing_fields:
-            logger.warning(f"Missing required fields: {missing_fields}")
-            return PredictionResponse(
-                success=False,
-                error=f'Missing required fields: {missing_fields}',
-                timestamp=datetime.now().isoformat(),
-                # Provide default values for required fields
-                hivProbability=0.0,
-                riskScore=0,
-                riskLevel="Low",
-                recommendations=[],
-                confidence=0.0,
-                modelUsed=False,
-                featuresUsed=0,
-                featureValues={}
-            )
+        # Log critical sexual activity status
+        sexual_activity = answers.get('sexual_activity', 'unknown')
+        logger.info(f"🔍 CRITICAL - User sexual_activity: {sexual_activity}")
 
         # Make prediction
         prediction = predictor.predict(answers)
@@ -445,11 +574,11 @@ async def predict(request: PredictionRequest):
             timestamp=datetime.now().isoformat()
         )
 
-        logger.info(f"Prediction completed - Risk Score: {prediction['riskScore']}, Level: {risk_level}, Model Used: {prediction['model_used']}")
+        logger.info(f"✅ PREDICTION COMPLETED - Risk Score: {prediction['riskScore']}, Level: {risk_level}, Model Used: {prediction['model_used']}")
         return response
 
     except Exception as e:
-        logger.error(f"Unexpected error in prediction: {e}")
+        logger.error(f"❌ Unexpected error in prediction: {e}")
         return PredictionResponse(
             success=False,
             error=f"Internal server error: {str(e)}",
@@ -478,6 +607,8 @@ async def get_features():
             "condom_use": predictor.condom_use_mapping
         },
         "age_range": "15-65 (typical survey range)",
+        "zero_encoding": "All sexual risk factors are zeroed when sexual_activity='no'",
+        "numeric_partners": "Numeric values for sexual_partners are properly handled (1, 2, 3+ for >=3)",
         "example_request": {
             "answers": {
                 "age": "35",
@@ -486,7 +617,13 @@ async def get_features():
                 "wealth_index": "middle",
                 "hiv_tested": "no",
                 "sexual_partners": "2",
-                "condom_use": "sometimes"
+                "condom_use": "sometimes",
+                "sexual_activity": "no",  # This will zero all sexual risk factors
+                "recent_partners": "0",
+                "high_risk_partner": "no",
+                "sti_symptoms": "no",
+                "previous_sti": "no",
+                "transactional_sex": "no"
             }
         }
     }
@@ -499,6 +636,9 @@ async def get_model_info():
         "model_type": str(type(predictor.model).__name__) if predictor.model else None,
         "feature_columns": predictor.feature_columns,
         "feature_count": len(predictor.feature_columns),
+        "zero_encoding_enabled": True,
+        "max_risk_non_active": "10%",
+        "numeric_partners_handling": True,
         "prediction_capability": "probabilities" if hasattr(predictor.model, 'predict_proba') else "binary only" if predictor.model else "none"
     }
 
@@ -524,13 +664,19 @@ async def get_model_info():
 async def test_prediction():
     """Test endpoint with sample data to verify the API is working"""
     sample_answers = {
-        "age": "35",
-        "marital_status": "married",
-        "education": "secondary",
-        "wealth_index": "middle",
+        "age": "20",
+        "marital_status": "single",
+        "education": "college/university",
+        "wealth_index": "middle income",
         "hiv_tested": "no",
-        "sexual_partners": "2",
-        "condom_use": "sometimes"
+        "sexual_partners": "12",  # Test numeric value
+        "condom_use": "always",
+        "sexual_activity": "no",  # This should trigger zero-encoding
+        "recent_partners": "0",
+        "high_risk_partner": "no",
+        "sti_symptoms": "no",
+        "previous_sti": "no",
+        "transactional_sex": "no"
     }
 
     try:
@@ -555,32 +701,14 @@ async def test_prediction():
             "timestamp": datetime.now().isoformat()
         }
 
-@app.get("/debug/model-loading", summary="Debug model loading status")
-async def debug_model_loading():
-    """Debug endpoint to check model loading status"""
-    available_files = []
-    for root, dirs, files in os.walk('.'):
-        for file in files:
-            if any(ext in file for ext in ['.pkl', '.joblib', '.json', '.model']):
-                available_files.append(os.path.join(root, file))
-
-    return {
-        "model_loaded": predictor.model is not None,
-        "model_type": str(type(predictor.model)) if predictor.model else None,
-        "feature_columns": predictor.feature_columns,
-        "available_model_files": available_files,
-        "current_directory": os.getcwd(),
-        "timestamp": datetime.now().isoformat()
-    }
-
 if __name__ == "__main__":
     import uvicorn
 
-    # Development server
+    # Development server - runs on port 8000 to match Java configuration
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8000,
+        port=8000,  # This matches your Java ML service configuration
         log_level="info",
-        reload=True  # Enable auto-reload for development
+        reload=True
     )
