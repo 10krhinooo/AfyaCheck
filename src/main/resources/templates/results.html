@@ -27,8 +27,8 @@
             font-weight: 700;
             text-align: center;
             margin: 2rem 0 1rem;
-            color: #2c5aa0;
-            background: linear-gradient(135deg, #2c5aa0, #1e3a8a);
+            color: #198754;
+            background: linear-gradient(135deg, #198754, #146c43);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -46,9 +46,9 @@
         }
 
         .risk-low {
-            background: #d4edda;
-            color: #155724;
-            border: 2px solid #c3e6cb;
+            background: #d1e7dd;
+            color: #0f5132;
+            border: 2px solid #badbcc;
         }
 
         .risk-medium {
@@ -72,7 +72,7 @@
         }
 
         .results-header {
-            color: #2c5aa0;
+            color: #198754;
             border-bottom: 3px solid #e9ecef;
             padding-bottom: 1rem;
             margin-bottom: 1.5rem;
@@ -81,7 +81,7 @@
         }
 
         .recommendation-item {
-            border-left: 4px solid #2c5aa0;
+            border-left: 4px solid #198754;
             margin-bottom: 1rem;
             border-radius: 6px;
             background: #f8f9fa;
@@ -95,8 +95,8 @@
         }
 
         .confidence-indicator {
-            background: #e3f2fd;
-            color: #1565c0;
+            background: #d1e7dd;
+            color: #0f5132;
             padding: 0.5rem 1rem;
             border-radius: 20px;
             font-size: 0.875rem;
@@ -105,8 +105,8 @@
         }
 
         .model-badge {
-            background: #e8f5e8;
-            color: #2e7d32;
+            background: #d1e7dd;
+            color: #0f5132;
             padding: 0.5rem 1rem;
             border-radius: 20px;
             font-size: 0.875rem;
@@ -122,17 +122,36 @@
         }
 
         .btn-primary-action {
-            background: linear-gradient(135deg, #2c5aa0 0%, #1e3a8a 100%);
+            background: linear-gradient(135deg, #198754 0%, #146c43 100%);
             border: none;
             padding: 0.875rem 2.5rem;
             font-weight: 600;
             border-radius: 8px;
             transition: all 0.2s ease;
+            color: white;
         }
 
         .btn-primary-action:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(44, 90, 160, 0.3);
+            box-shadow: 0 6px 20px rgba(25, 135, 84, 0.3);
+            color: white;
+        }
+
+        .btn-next-action {
+            background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+            border: none;
+            padding: 0.875rem 2.5rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .btn-next-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(25, 135, 84, 0.3);
+            color: white;
         }
 
         .technical-info {
@@ -153,6 +172,24 @@
             color: #6c757d;
             margin-bottom: 1.5rem;
         }
+
+        .health-center-feature {
+            background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+            border-radius: 12px;
+            padding: 2rem;
+            color: white;
+            margin: 2rem 0;
+        }
+
+        .health-center-feature h3 {
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .health-center-feature p {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 1.5rem;
+        }
     </style>
 </head>
 <body>
@@ -161,7 +198,9 @@
 
         <!-- Consent Denied Section -->
         <div th:if="${consentDenied != null and consentDenied}" class="consent-denied-section">
-            <div class="consent-denied-icon">🚫</div>
+            <div class="consent-denied-icon">
+                <i class="fas fa-ban"></i>
+            </div>
             <h1 class="h2 text-dark mb-4">Assessment Ended</h1>
             <div class="alert alert-info mx-auto" style="max-width: 600px;">
                 <h3 class="alert-heading">Consent Not Provided</h3>
@@ -173,7 +212,7 @@
                     We respect your decision. If you change your mind, you can always start a new assessment.
                 </p>
                 <div class="d-flex justify-content-center gap-3 flex-wrap">
-                    <a th:href="@{/questionnaire/start}" class="btn btn-primary-action text-white">
+                    <a th:href="@{/questionnaire/start}" class="btn btn-primary-action">
                         Start New Assessment
                     </a>
                     <a th:href="@{/dashboard}" class="btn btn-outline-secondary">
@@ -220,6 +259,25 @@
                     <span th:if="${modelUsed != null and !modelUsed}" class="model-badge" style="background: #fff3cd; color: #856404;">
                             Standard Assessment
                         </span>
+                </div>
+            </div>
+
+            <!-- Health Centers Feature Promotion -->
+            <div class="health-center-feature">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h3>Find Healthcare Services Near You</h3>
+                        <p class="mb-0">
+                            Based on your assessment results, we can help you locate nearby health centers,
+                            clinics, and testing facilities. Our service can find healthcare providers in your area
+                            and provide you with contact information and directions.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <a th:href="@{/health-centers}" class="btn btn-next-action btn-lg">
+                            Find Health Centers
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -348,8 +406,11 @@
 
             <!-- Action Section -->
             <div class="text-center mt-5 pt-4 border-top">
-                <a th:href="@{/questionnaire/start}" class="btn btn-primary-action text-white me-3">
+                <a th:href="@{/questionnaire/start}" class="btn btn-primary-action me-3">
                     Begin New Assessment
+                </a>
+                <a th:href="@{/health-centers}" class="btn btn-next-action me-3">
+                    Find Health Centers
                 </a>
                 <button class="btn btn-outline-secondary me-3" onclick="window.print()">
                     Print Results
@@ -405,6 +466,19 @@
                     item.style.transform = 'translateX(0)';
                 }, 500 + (index * 100));
             });
+
+            // Animate health center feature
+            const healthCenterFeature = document.querySelector('.health-center-feature');
+            if (healthCenterFeature) {
+                healthCenterFeature.style.opacity = '0';
+                healthCenterFeature.style.transform = 'translateY(20px)';
+
+                setTimeout(() => {
+                    healthCenterFeature.style.transition = 'all 0.6s ease';
+                    healthCenterFeature.style.opacity = '1';
+                    healthCenterFeature.style.transform = 'translateY(0)';
+                }, 800);
+            }
         }
     });
 </script>
