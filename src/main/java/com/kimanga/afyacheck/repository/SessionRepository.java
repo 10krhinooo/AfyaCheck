@@ -36,6 +36,18 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
     // Count sessions by status
     long countByStatus(String status);
 
+    // A user's past assessment sessions, most recent first
+    List<Session> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    // A user's most recent session
+    Optional<Session> findTopByUserIdOrderByCreatedAtDesc(Long userId);
+
+    // One row per user: their latest completed session, only when that
+    // session is older than the cutoff (i.e. the user is overdue for
+    // reassessment).
+    @Query("SELECT s FROM Session s WHERE s.status = 'completed' AND s.user IS NOT NULL " +
+            "AND s.createdAt = (SELECT MAX(s2.createdAt) FROM Session s2 WHERE s2.user = s.user AND s2.status = 'completed') " +
+            "AND s.createdAt < :cutoff")
+    List<Session> findLatestCompletedSessionsOlderThan(@Param("cutoff") Date cutoff);
 
 }

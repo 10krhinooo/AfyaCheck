@@ -3,6 +3,7 @@ package com.kimanga.afyacheck.service;
 import com.kimanga.afyacheck.model.Answer;
 import com.kimanga.afyacheck.model.Session;
 import com.kimanga.afyacheck.model.RiskAssessment;
+import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.repository.AnswerRepository;
 import com.kimanga.afyacheck.repository.SessionRepository;
 import com.kimanga.afyacheck.repository.RiskAssessmentRepository;
@@ -425,6 +426,33 @@ public class SessionService {
             logger.error("Error completing session: {}", sessionId, e);
             clearPersistenceContext();
         }
+    }
+
+    @Transactional
+    public void assignUser(String sessionId, User user) {
+        try {
+            String safeSessionId = createSafeSessionId(sessionId);
+            Optional<Session> sessionOpt = sessionRepository.findBySessionId(safeSessionId);
+            if (sessionOpt.isPresent()) {
+                Session session = sessionOpt.get();
+                session.setUser(user);
+                sessionRepository.save(session);
+                logger.info("Assigned user {} to session: {}", user.getId(), safeSessionId);
+            } else {
+                logger.warn("Session not found when assigning user: {}", safeSessionId);
+            }
+        } catch (Exception e) {
+            logger.error("Error assigning user to session: {}", sessionId, e);
+            clearPersistenceContext();
+        }
+    }
+
+    public List<Session> getSessionsForUser(Long userId) {
+        return sessionRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    public Optional<Session> getLatestSessionForUser(Long userId) {
+        return sessionRepository.findTopByUserIdOrderByCreatedAtDesc(userId);
     }
 
     public List<Answer> getSessionAnswers(String sessionId) {

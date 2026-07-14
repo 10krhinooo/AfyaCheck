@@ -36,6 +36,12 @@ public class Session {
     @Column(name = "status", length = 50)
     private String status = "active";
 
+    // Nullable: sessions are created before authentication on pages like
+    // /login and /forgot-password, so not every session has an owner.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = true)
+    private User user;
+
     @OneToMany(mappedBy = "session", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.LAZY)
     private List<Answer> answers = new ArrayList<>();
 

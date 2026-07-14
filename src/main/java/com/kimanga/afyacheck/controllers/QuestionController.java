@@ -2,9 +2,12 @@ package com.kimanga.afyacheck.controllers;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.service.DecisionService;
 import com.kimanga.afyacheck.service.SessionService;
+import com.kimanga.afyacheck.service.UserService;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -19,17 +22,24 @@ public class QuestionController {
 
     private final DecisionService decisionService;
     private final SessionService sessionService;
+    private final UserService userService;
 
-    public QuestionController(DecisionService decisionService, SessionService sessionService) {
+    public QuestionController(DecisionService decisionService, SessionService sessionService, UserService userService) {
         this.decisionService = decisionService;
         this.sessionService = sessionService;
+        this.userService = userService;
     }
 
     @GetMapping("/start")
-    public String startQuestionnaire(HttpSession httpSession, Model model) {
+    public String startQuestionnaire(HttpSession httpSession, Model model, Authentication authentication) {
         try {
             String sessionId = httpSession.getId();
             String createdSessionId = sessionService.createOrGetSession(sessionId);
+
+            // /questionnaire/** requires authentication (see SecurityConfig), so
+            // the current user is always resolvable here.
+            userService.resolveCurrentUser(authentication)
+                    .ifPresent(user -> sessionService.assignUser(createdSessionId, user));
 
             logger.info("Starting questionnaire for session: {} (created: {})", sessionId, createdSessionId);
 

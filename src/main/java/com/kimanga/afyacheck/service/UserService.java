@@ -2,6 +2,7 @@ package com.kimanga.afyacheck.service;
 
 import com.kimanga.afyacheck.mail.EmailService;
 import com.kimanga.afyacheck.model.AuthProvider;
+import com.kimanga.afyacheck.model.CustomOAuth2User;
 import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.model.VerificationToken;
@@ -15,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -202,6 +204,26 @@ public class UserService {
     /** Find user by email */
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
+    }
+
+    /**
+     * Resolve the currently authenticated User entity.
+     *
+     * authentication.getName() means different things depending on how the
+     * user logged in: for form login it's the email (CustomUserDetailsService
+     * builds the principal with the email as username), but for OAuth2 login
+     * CustomOAuth2User.getName() returns the username, not the email. Looking
+     * an OAuth2 principal's getName() up via findByEmail would silently fail,
+     * so OAuth2 principals are resolved directly instead.
+     */
+    public Optional<User> resolveCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return Optional.empty();
+        }
+        if (authentication.getPrincipal() instanceof CustomOAuth2User oauth2User) {
+            return Optional.of(oauth2User.getUser());
+        }
+        return findByEmail(authentication.getName());
     }
 
     /** Make a user admin by email */
