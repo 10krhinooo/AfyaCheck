@@ -1,0 +1,39 @@
+# Copy this file to a location outside version control (or set these as real
+# environment variables / a Spring Boot config-tree / your deployment
+# platform's secret manager) and fill in real values. Never commit real
+# secrets — application.properties reads all of the keys below via
+# ${ENV_VAR:default} placeholders, so setting the environment variable is
+# enough; no code or property file changes are needed.
+
+spring.application.name=afyacheck
+
+# --- Database ---
+DB_URL=jdbc:postgresql://localhost:5432/AfyaCheck
+DB_USERNAME=postgres
+DB_PASSWORD=change-me
+
+# --- Mail (SMTP) ---
+MAIL_USERNAME=noreply.example@gmail.com
+MAIL_PASSWORD=change-me
+
+# --- Remember-me cookie signing key ---
+REMEMBER_ME_KEY=change-me-to-a-long-random-string
+
+# --- Google OAuth2 ---
+GOOGLE_OAUTH_CLIENT_ID=change-me
+GOOGLE_OAUTH_CLIENT_SECRET=change-me
+
+# --- GitHub OAuth2 ---
+GITHUB_OAUTH_CLIENT_ID=change-me
+GITHUB_OAUTH_CLIENT_SECRET=change-me
+
+# --- Google Maps API key ---
+# Not treated as a secret at runtime (it ends up client-visible either way),
+# but still keep it out of source control and restrict it by HTTP referrer
+# in the Google Cloud Console.
+GOOGLE_MAPS_API_KEY=change-me
+
+# --- Application base URL ---
+# Used to build links in verification/password-reset emails and the OAuth2
+# redirect URIs. Set to your real deployed origin in production.
+APP_BASE_URL=http://localhost:8080
