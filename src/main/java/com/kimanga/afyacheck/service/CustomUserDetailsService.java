@@ -21,7 +21,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         return org.springframework.security.core.userdetails.User.builder()
                 .username(u.getEmail())
                 .password(u.getPassword())
-                .roles("USER")
+                .authorities(u.getAuthorities())
                 .disabled(!u.isEnabled()) // This tells Spring Security the account is disabled
                 .build();
     }
