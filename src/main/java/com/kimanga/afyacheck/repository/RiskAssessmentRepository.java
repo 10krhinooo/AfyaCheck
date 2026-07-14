@@ -34,4 +34,10 @@ public interface RiskAssessmentRepository extends JpaRepository<RiskAssessment, 
 
     // Delete all risk assessments for a session
     void deleteBySession_SessionId(String sessionId);
+
+    // For the admin CSV export: fetches session and user eagerly so the
+    // controller can read them outside a transaction without triggering
+    // LazyInitializationException.
+    @Query("SELECT ra FROM RiskAssessment ra JOIN FETCH ra.session s LEFT JOIN FETCH s.user ORDER BY ra.createdAt DESC")
+    List<RiskAssessment> findAllForExport();
 }

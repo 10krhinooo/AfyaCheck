@@ -1,0 +1,17 @@
+:root {
+  --afyacheck-green: #198754;
+  --afyacheck-green-dark: #146c43;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  min-height: 100vh;
+}
+
+.page-loading {
+  padding: 3rem;
+  text-align: center;
+  color: #6c757d;
+}

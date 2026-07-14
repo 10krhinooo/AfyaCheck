@@ -87,6 +87,31 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+def npmCommand = System.getProperty('os.name').toLowerCase().contains('windows') ? 'npm.cmd' : 'npm'
+
+tasks.register('frontendInstall', Exec) {
+    workingDir = file('frontend')
+    commandLine npmCommand, 'ci'
+    inputs.file('frontend/package-lock.json')
+    outputs.dir('frontend/node_modules')
+}
+
+tasks.register('frontendBuild', Exec) {
+    dependsOn tasks.named('frontendInstall')
+    workingDir = file('frontend')
+    commandLine npmCommand, 'run', 'build'
+    inputs.dir('frontend/src')
+    inputs.file('frontend/index.html')
+    inputs.file('frontend/vite.config.ts')
+    outputs.dir('src/main/resources/static/app')
+}
+
+// The built SPA needs to already be in src/main/resources/static/app
+// before Spring Boot's resources get packaged into the jar.
+tasks.named('processResources') {
+    dependsOn tasks.named('frontendBuild')
+}
+
 // Optional: Configure bootRun for development
 bootRun {
     systemProperties = System.properties

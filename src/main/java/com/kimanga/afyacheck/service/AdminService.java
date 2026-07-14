@@ -22,6 +22,7 @@ public class AdminService {
     private final UserRepository userRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
+    private final RiskAssessmentRepository riskAssessmentRepository;
     // Remove sessionRepository dependency since we're not using it
 
     public DashboardStats getDashboardStats() {
@@ -166,6 +167,27 @@ public class AdminService {
             chartData.put("labels", Arrays.asList("yes_no", "multiple_choice", "text", "number", "choice"));
             chartData.put("data", Arrays.asList(45L, 30L, 15L, 8L, 2L));
             chartData.put("backgroundColors", Arrays.asList("#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF"));
+        }
+
+        return chartData;
+    }
+
+    public Map<String, Object> getRiskDistributionData() {
+        Map<String, Object> chartData = new HashMap<>();
+
+        try {
+            List<String> labels = Arrays.asList("Low", "Medium", "High");
+            List<Long> data = labels.stream()
+                    .map(riskAssessmentRepository::countByRiskLevel)
+                    .collect(Collectors.toList());
+
+            chartData.put("labels", labels);
+            chartData.put("data", data);
+            chartData.put("backgroundColors", Arrays.asList("#198754", "#ffc107", "#dc3545"));
+        } catch (Exception e) {
+            chartData.put("labels", Arrays.asList("Low", "Medium", "High"));
+            chartData.put("data", Arrays.asList(0L, 0L, 0L));
+            chartData.put("backgroundColors", Arrays.asList("#198754", "#ffc107", "#dc3545"));
         }
 
         return chartData;
