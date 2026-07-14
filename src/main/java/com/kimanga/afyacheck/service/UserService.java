@@ -14,6 +14,7 @@ import com.kimanga.afyacheck.DTO.ServiceResult;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,9 @@ public class UserService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     /** Register user and send verification email */
     public ServiceResult<User> register(User user) {
@@ -76,7 +80,7 @@ public class UserService {
         verificationTokenRepository.save(verificationToken);
 
         // Prepare verification email
-        String verificationUrl = "http://localhost:8080/verify?token=" + token;
+        String verificationUrl = baseUrl + "/verify?token=" + token;
         Context context = new Context();
         context.setVariable("userName", savedUser.getUsername());
         context.setVariable("userEmail", savedUser.getEmail());
@@ -135,7 +139,7 @@ public class UserService {
         passwordResetTokenRepository.save(resetToken);
 
         // Prepare reset email
-        String resetUrl = "http://localhost:8080/reset-password?token=" + token;
+        String resetUrl = baseUrl + "/reset-password?token=" + token;
         Context context = new Context();
         context.setVariable("userName", user.getUsername());
         context.setVariable("userEmail", user.getEmail());

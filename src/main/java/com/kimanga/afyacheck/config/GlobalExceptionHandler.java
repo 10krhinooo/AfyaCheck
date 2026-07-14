@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
         logger.error("Illegal state exception: ", ex);
         Map<String, String> response = new HashMap<>();
         response.put("error", "Invalid data");
-        response.put("message", ex.getMessage());
+        response.put("message", "The request could not be processed. Please check your input and try again.");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
@@ -50,7 +50,7 @@ public class GlobalExceptionHandler {
         logger.error("Runtime exception: ", ex);
         Map<String, String> response = new HashMap<>();
         response.put("error", "Application error");
-        response.put("message", ex.getMessage());
+        response.put("message", "An unexpected error occurred. Please try again. If the problem persists, contact support.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 

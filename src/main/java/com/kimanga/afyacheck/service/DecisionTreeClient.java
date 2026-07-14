@@ -3,6 +3,7 @@ package com.kimanga.afyacheck.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -10,6 +11,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import com.kimanga.afyacheck.DTO.*;
 
+import java.time.Duration;
 import java.util.*;
 
 @Service
@@ -22,8 +24,13 @@ public class DecisionTreeClient {
 
     private final RestTemplate restTemplate;
 
-    public DecisionTreeClient() {
-        this.restTemplate = new RestTemplate();
+    public DecisionTreeClient(RestTemplateBuilder restTemplateBuilder,
+                               @Value("${service.connection.timeout:5000}") long connectTimeoutMs,
+                               @Value("${service.read.timeout:10000}") long readTimeoutMs) {
+        this.restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofMillis(connectTimeoutMs))
+                .setReadTimeout(Duration.ofMillis(readTimeoutMs))
+                .build();
     }
 
     /**

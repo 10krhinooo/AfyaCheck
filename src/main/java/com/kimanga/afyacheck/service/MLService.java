@@ -2,6 +2,7 @@ package com.kimanga.afyacheck.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -34,8 +36,13 @@ public class MLService {
     private static final List<String> WEALTH_INDEX_OPTIONS = List.of("low income", "lower middle income", "middle income", "upper middle income", "high income");
     private static final List<String> CONDOM_USE_OPTIONS = List.of("never", "sometimes", "always");
 
-    public MLService() {
-        this.restTemplate = new RestTemplate();
+    public MLService(RestTemplateBuilder restTemplateBuilder,
+                      @Value("${service.connection.timeout:5000}") long connectTimeoutMs,
+                      @Value("${service.read.timeout:10000}") long readTimeoutMs) {
+        this.restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofMillis(connectTimeoutMs))
+                .setReadTimeout(Duration.ofMillis(readTimeoutMs))
+                .build();
     }
 
     /**
