@@ -1,6 +1,7 @@
 package com.kimanga.afyacheck.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,14 +25,21 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Username is required")
     private String username;
 
+    @NotBlank(message = "Email is required")
+    @Email(message = "Enter a valid email address")
     @Column(nullable = false, unique = true)
     private String email;
 
+    @NotBlank(message = "Full name is required")
     @Column(nullable = false)
     private String name;
 
+    // Not annotated with @NotBlank: OAuth2-created users have no password.
+    // Password presence/length is enforced explicitly in UserService.register
+    // for the local-registration flow only (see registerUser flow).
     @Column(name = "password")
     private String password;
 

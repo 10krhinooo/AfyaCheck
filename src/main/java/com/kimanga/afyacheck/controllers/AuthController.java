@@ -5,15 +5,19 @@ import com.kimanga.afyacheck.service.UserService;
 import com.kimanga.afyacheck.service.SessionService;
 import com.kimanga.afyacheck.util.AlertMessage;
 import com.kimanga.afyacheck.DTO.ServiceResult;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import jakarta.servlet.http.HttpSession;
+
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -71,10 +75,18 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public String registerUser(@ModelAttribute("user") User user,
+    public String registerUser(@Valid @ModelAttribute("user") User user,
                                BindingResult result,
                                Model model,
                                HttpSession httpSession) {
+
+        if (result.hasErrors()) {
+            String errorMessage = result.getFieldErrors().stream()
+                    .map(FieldError::getDefaultMessage)
+                    .collect(Collectors.joining(" "));
+            model.addAttribute("errorMessage", errorMessage);
+            return "register";
+        }
 
         try {
             // Delegate all logic to the service

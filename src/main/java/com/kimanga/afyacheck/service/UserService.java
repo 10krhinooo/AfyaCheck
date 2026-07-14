@@ -53,6 +53,10 @@ public class UserService {
             return ServiceResult.failure(AlertMessage.EMAIL_ALREADY_EXISTS);
         }
 
+        if (user.getPassword() == null || user.getPassword().length() < 8) {
+            return ServiceResult.failure("Password must be at least 8 characters long");
+        }
+
         // Set user properties
         user.setProvider(AuthProvider.LOCAL);
         user.setEmailVerified(false);
@@ -113,10 +117,13 @@ public class UserService {
     public ServiceResult<Void> initiatePasswordReset(String email) {
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
-            return ServiceResult.failure(AlertMessage.USER_NOT_FOUND);
+            // Return the same success response regardless of whether the email
+            // exists, to avoid leaking account existence to an attacker.
+            return ServiceResult.success(AlertMessage.PASSWORD_RESET_LINK_SENT, null);
         }
 
         User user = optionalUser.get();
+        passwordResetTokenRepository.deleteByUser(user);
 
         // Generate reset token
         String token = UUID.randomUUID().toString();

@@ -3,6 +3,7 @@ package com.kimanga.afyacheck.config;
 import com.kimanga.afyacheck.service.CustomOAuth2UserService;
 import com.kimanga.afyacheck.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -13,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
 @Configuration
@@ -20,6 +22,12 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
+
+    @Value("${security.remember-me.key}")
+    private String rememberMeKey;
+
+    @Value("${security.remember-me.token-validity-seconds}")
+    private int rememberMeTokenValiditySeconds;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -41,7 +49,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/",
@@ -83,8 +91,8 @@ public class SecurityConfig {
                         .permitAll()
                 )
                 .rememberMe(remember -> remember
-                        .key("REDACTED_ROTATE_ME")
-                        .tokenValiditySeconds(604800) // 7 days
+                        .key(rememberMeKey)
+                        .tokenValiditySeconds(rememberMeTokenValiditySeconds)
                         .rememberMeParameter("remember-me")
                         .rememberMeCookieName("afyacheck-remember-me")
                 )
