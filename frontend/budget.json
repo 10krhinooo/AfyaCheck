@@ -1,0 +1,12 @@
+{
+  "_comment": "Per-route gzip JS budgets in KB, per the migration plan (floofy-honking-storm.md). Matched by filename substring against dist/assets/*.js. 'client'/'app' are vite-react-ssg's current chunk names for the shared runtime + all routes bundled together (no route-level code-splitting yet, added starting Phase 2) — once routes are React.lazy-split, replace these with the actual per-route chunk names.",
+  "client": 90,
+  "app": 60,
+  "vendor": 90,
+  "index": 15,
+  "questionnaire": 60,
+  "results": 40,
+  "health-centers": 70,
+  "dashboard": 40,
+  "admin": 180
+}
