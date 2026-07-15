@@ -2,8 +2,12 @@
 # environment variables / a Spring Boot config-tree / your deployment
 # platform's secret manager) and fill in real values. Never commit real
 # secrets — application.properties reads all of the keys below via
-# ${ENV_VAR:default} placeholders, so setting the environment variable is
-# enough; no code or property file changes are needed.
+# ${ENV_VAR} placeholders, so setting the environment variable is enough;
+# no code or property file changes are needed.
+#
+# DB_PASSWORD, MAIL_PASSWORD, and REMEMBER_ME_KEY have no default value in
+# application.properties: the app will fail to start if they are unset,
+# rather than silently running with a blank credential.
 
 spring.application.name=afyacheck
 
@@ -16,14 +20,16 @@ DB_PASSWORD=change-me
 MAIL_USERNAME=noreply.example@gmail.com
 MAIL_PASSWORD=change-me
 
-# --- Remember-me cookie signing key ---
+# --- Remember-me cookie signing key (required, no default) ---
 REMEMBER_ME_KEY=change-me-to-a-long-random-string
 
-# --- Google OAuth2 ---
+# --- Google OAuth2 (currently disabled — properties are commented out in
+# application.properties; uncomment there too if you enable this) ---
 GOOGLE_OAUTH_CLIENT_ID=change-me
 GOOGLE_OAUTH_CLIENT_SECRET=change-me
 
-# --- GitHub OAuth2 ---
+# --- GitHub OAuth2 (currently disabled — properties are commented out in
+# application.properties; uncomment there too if you enable this) ---
 GITHUB_OAUTH_CLIENT_ID=change-me
 GITHUB_OAUTH_CLIENT_SECRET=change-me
 
