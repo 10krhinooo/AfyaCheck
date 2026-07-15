@@ -7,6 +7,7 @@ import com.kimanga.afyacheck.service.DecisionService;
 import com.kimanga.afyacheck.service.SessionService;
 import com.kimanga.afyacheck.service.UserService;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -312,25 +313,242 @@ public class QuestionController {
         return decisionService.debugQuestionDatabase();
     }
 
-    // REST API endpoints
+    // REST API endpoints, consumed by the React questionnaire page. Reuses
+    // DecisionService/SessionService exactly as the MVC controller above
+    // does; only the request/response shape differs (JSON instead of a
+    // Thymeleaf Model).
     @RestController
     @RequestMapping("/api/questions")
     public static class QuestionApiController {
 
-        private final DecisionService decisionService;
+        private static final Logger logger = LoggerFactory.getLogger(QuestionApiController.class);
 
-        public QuestionApiController(DecisionService decisionService) {
+        private final DecisionService decisionService;
+        private final SessionService sessionService;
+        private final UserService userService;
+
+        public QuestionApiController(DecisionService decisionService, SessionService sessionService, UserService userService) {
             this.decisionService = decisionService;
+            this.sessionService = sessionService;
+            this.userService = userService;
+        }
+
+        @PostMapping("/start")
+        public ResponseEntity<Map<String, Object>> start(Authentication authentication) {
+            String sessionId = UUID.randomUUID().toString();
+            String createdSessionId = sessionService.createOrGetSession(sessionId);
+
+            userService.resolveCurrentUser(authentication)
+                    .ifPresent(user -> sessionService.assignUser(createdSessionId, user));
+
+            Map<String, String> initialAnswers = new HashMap<>();
+            initialAnswers.put("_sessionId", createdSessionId);
+
+            Map<String, Object> firstQuestion = decisionService.getNextQuestion(initialAnswers);
+            normalizeOptions(firstQuestion);
+
+            if (firstQuestion.containsKey("error")) {
+                return ResponseEntity.badRequest().body(firstQuestion);
+            }
+
+            // The decision service can signal completion on the very first
+            // call (e.g. its Python backends are unavailable and it falls
+            // back to an immediate assessment), same as it can mid-survey;
+            // handle it the same way next() does rather than returning a
+            // malformed "question" response.
+            if (Boolean.TRUE.equals(firstQuestion.get("end"))) {
+                return ResponseEntity.ok(buildResultResponse(createdSessionId, firstQuestion, initialAnswers));
+            }
+
+            Map<String, String> safeAnswers = sessionService.getCurrentAnswers(createdSessionId);
+            return ResponseEntity.ok(buildQuestionResponse(createdSessionId, firstQuestion,
+                    safeAnswers != null ? safeAnswers : new HashMap<>(), false));
         }
 
         @PostMapping("/next")
-        public Map<String, Object> next(@RequestBody Map<String, String> answers) {
-            return decisionService.getNextQuestion(answers);
+        public ResponseEntity<Map<String, Object>> next(@RequestBody AnswerSubmission submission) {
+            String cleanSessionId = cleanSessionId(submission.getSessionId());
+
+            Map<String, String> answers = sessionService.getCurrentAnswers(cleanSessionId);
+            if (answers == null) {
+                answers = new HashMap<>();
+            }
+
+            Map<String, String> formParams = submission.toFormParams();
+            sessionService.saveAnswers(cleanSessionId, formParams);
+
+            Map<String, String> updatedAnswers = new HashMap<>(answers);
+            updatedAnswers.putAll(formParams);
+            updatedAnswers.put("_sessionId", cleanSessionId);
+
+            Map<String, Object> nextStep = decisionService.getNextQuestion(updatedAnswers);
+            normalizeOptions(nextStep);
+
+            if (Boolean.TRUE.equals(nextStep.get("end"))) {
+                return ResponseEntity.ok(buildResultResponse(cleanSessionId, nextStep, updatedAnswers));
+            }
+
+            return ResponseEntity.ok(buildQuestionResponse(cleanSessionId, nextStep, updatedAnswers, true));
+        }
+
+        @PostMapping("/back")
+        public ResponseEntity<Map<String, Object>> back(@RequestBody Map<String, String> body) {
+            String cleanSessionId = cleanSessionId(body.get("sessionId"));
+
+            Map<String, String> previousAnswers = sessionService.goBack(cleanSessionId);
+            if (previousAnswers == null) {
+                previousAnswers = new HashMap<>();
+            }
+            previousAnswers.put("_sessionId", cleanSessionId);
+
+            Map<String, Object> previousQuestion = decisionService.getNextQuestion(previousAnswers);
+            normalizeOptions(previousQuestion);
+
+            return ResponseEntity.ok(buildQuestionResponse(cleanSessionId, previousQuestion,
+                    previousAnswers, !previousAnswers.isEmpty()));
         }
 
         @GetMapping("/status")
         public Map<String, Object> status() {
             return decisionService.getDecisionTreeStatus();
+        }
+
+        private Map<String, Object> buildQuestionResponse(String sessionId, Map<String, Object> question,
+                                                            Map<String, String> answers, boolean canGoBack) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("sessionId", sessionId);
+            response.put("question", question);
+            response.put("answers", answers);
+            response.put("canGoBack", canGoBack);
+            response.put("ended", false);
+            return response;
+        }
+
+        private Map<String, Object> buildResultResponse(String sessionId, Map<String, Object> nextStep,
+                                                          Map<String, String> updatedAnswers) {
+            logger.info("Survey ended for session: {} with {} questions answered",
+                    sessionId, updatedAnswers.size());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("sessionId", sessionId);
+            response.put("ended", true);
+            response.put("answers", updatedAnswers);
+            response.put("questionsAnswered", updatedAnswers.size());
+
+            if (Boolean.TRUE.equals(nextStep.get("consentDenied"))) {
+                sessionService.completeSession(sessionId);
+                response.put("consentDenied", true);
+                response.put("endMessage", nextStep.get("text"));
+                return response;
+            }
+
+            Map<String, Object> riskAssessment;
+            if (nextStep.containsKey("riskScore")) {
+                riskAssessment = nextStep;
+            } else {
+                riskAssessment = decisionService.calculateRiskScore(updatedAnswers);
+            }
+
+            String recommendationsStr = (String) riskAssessment.get("recommendations");
+            List<String> recommendationsList = recommendationsStr != null && !recommendationsStr.isEmpty()
+                    ? Arrays.asList(recommendationsStr.split("; "))
+                    : new ArrayList<>();
+
+            sessionService.saveRiskAssessment(
+                    sessionId,
+                    (String) riskAssessment.get("riskLevel"),
+                    (Integer) riskAssessment.get("riskScore"),
+                    recommendationsStr
+            );
+
+            response.put("consentDenied", false);
+            response.put("riskScore", riskAssessment.get("riskScore"));
+            response.put("riskLevel", riskAssessment.get("riskLevel"));
+            response.put("recommendations", recommendationsList);
+            response.put("endMessage", nextStep.containsKey("riskScore")
+                    ? nextStep.get("text") : "Thank you for completing the STI risk assessment!");
+            response.put("confidence", riskAssessment.get("confidence"));
+            response.put("modelUsed", riskAssessment.get("modelUsed"));
+            return response;
+        }
+
+        @SuppressWarnings("unchecked")
+        private void normalizeOptions(Map<String, Object> question) {
+            if (question.get("options") instanceof String optionsString) {
+                question.put("options", convertOptionsStringToList(optionsString));
+            }
+        }
+
+        private List<String> convertOptionsStringToList(String optionsString) {
+            if (optionsString == null || optionsString.trim().isEmpty()) {
+                return new ArrayList<>();
+            }
+            return Arrays.asList(optionsString.split(","));
+        }
+
+        /**
+         * Mirrors QuestionController.cleanSessionId; duplicated because this
+         * is a static nested class and can't call the outer instance's
+         * private method.
+         */
+        private String cleanSessionId(String sessionId) {
+            if (sessionId == null || sessionId.trim().isEmpty()) {
+                return sessionId;
+            }
+            String trimmed = sessionId.trim();
+            if (trimmed.contains(",")) {
+                String[] parts = trimmed.split(",");
+                for (String part : parts) {
+                    String cleanPart = part.trim();
+                    if (sessionService.sessionExists(cleanPart)) {
+                        return cleanPart;
+                    }
+                }
+                return parts[0].trim();
+            }
+            return trimmed;
+        }
+    }
+
+    /**
+     * multiple_choice answers arrive as a String array; every other answer
+     * type is a single String. Flattened to form-param style (comma-joined)
+     * before being handed to SessionService/DecisionService, which is what
+     * the Python decision-tree service already expects (matching the old
+     * form-encoded submission's shape).
+     */
+    public static class AnswerSubmission {
+        private String sessionId;
+        private Map<String, Object> answers = new HashMap<>();
+
+        public String getSessionId() {
+            return sessionId;
+        }
+
+        public void setSessionId(String sessionId) {
+            this.sessionId = sessionId;
+        }
+
+        public Map<String, Object> getAnswers() {
+            return answers;
+        }
+
+        public void setAnswers(Map<String, Object> answers) {
+            this.answers = answers;
+        }
+
+        @SuppressWarnings("unchecked")
+        public Map<String, String> toFormParams() {
+            Map<String, String> formParams = new HashMap<>();
+            for (Map.Entry<String, Object> entry : answers.entrySet()) {
+                Object value = entry.getValue();
+                if (value instanceof List<?> list) {
+                    formParams.put(entry.getKey(), String.join(",", (List<String>) list));
+                } else if (value != null) {
+                    formParams.put(entry.getKey(), value.toString());
+                }
+            }
+            return formParams;
         }
     }
 }
