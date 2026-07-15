@@ -68,3 +68,7 @@ application-local.properties
 
 ### Node (keycloak/scripts — frontend/ has its own .gitignore) ###
 node_modules/
+
+### Python (ml-service, python-service) ###
+__pycache__/
+*.pyc
