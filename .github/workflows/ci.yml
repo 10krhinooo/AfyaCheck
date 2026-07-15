@@ -38,10 +38,9 @@ jobs:
       DB_URL: jdbc:postgresql://localhost:5432/afyacheck
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
-      # CI-only dummy values — these properties have no default and are
+      # CI-only dummy value — spring.mail.password has no default and is
       # required for the app to start (see application.properties).
       MAIL_PASSWORD: ci-test-mail-password
-      REMEMBER_ME_KEY: ci-test-remember-me-key
 
     steps:
       - uses: actions/checkout@v4
