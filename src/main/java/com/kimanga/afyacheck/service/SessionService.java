@@ -1,12 +1,11 @@
 package com.kimanga.afyacheck.service;
 
-import com.kimanga.afyacheck.model.Answer;
-import com.kimanga.afyacheck.model.Session;
 import com.kimanga.afyacheck.model.RiskAssessment;
+import com.kimanga.afyacheck.model.Session;
 import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.repository.AnswerRepository;
-import com.kimanga.afyacheck.repository.SessionRepository;
 import com.kimanga.afyacheck.repository.RiskAssessmentRepository;
+import com.kimanga.afyacheck.repository.SessionRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.slf4j.Logger;
@@ -15,84 +14,55 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
+/**
+ * Owns session lifecycle (create/find/complete/cleanup) and user
+ * association. Answer persistence and risk-assessment persistence are
+ * split out into AnswerService and RiskAssessmentPersistenceService;
+ * this class delegates to them so the public API callers already depend
+ * on (controllers) doesn't need to change.
+ */
 @Service
 public class SessionService {
 
     private static final Logger logger = LoggerFactory.getLogger(SessionService.class);
 
-    // Use a shorter session ID if the original is too problematic
-    private static final int MAX_SESSION_ID_LENGTH = 500;
-
     private final SessionRepository sessionRepository;
     private final AnswerRepository answerRepository;
     private final RiskAssessmentRepository riskAssessmentRepository;
+    private final SessionIdSanitizer sessionIdSanitizer;
+    private final AnswerService answerService;
+    private final RiskAssessmentPersistenceService riskAssessmentPersistenceService;
 
     @PersistenceContext
     private EntityManager entityManager;
 
     public SessionService(SessionRepository sessionRepository,
                           AnswerRepository answerRepository,
-                          RiskAssessmentRepository riskAssessmentRepository) {
+                          RiskAssessmentRepository riskAssessmentRepository,
+                          SessionIdSanitizer sessionIdSanitizer,
+                          AnswerService answerService,
+                          RiskAssessmentPersistenceService riskAssessmentPersistenceService) {
         this.sessionRepository = sessionRepository;
         this.answerRepository = answerRepository;
         this.riskAssessmentRepository = riskAssessmentRepository;
+        this.sessionIdSanitizer = sessionIdSanitizer;
+        this.answerService = answerService;
+        this.riskAssessmentPersistenceService = riskAssessmentPersistenceService;
     }
 
-    /**
-     * Creates a safe session ID by hashing long session IDs
-     */
     private String createSafeSessionId(String originalSessionId) {
-        if (originalSessionId == null) {
-            return UUID.randomUUID().toString();
-        }
-
-        // Clean the session ID first - remove duplicates
-        String cleanSessionId = cleanSessionId(originalSessionId);
-
-        // If session ID is reasonable length, use it as-is
-        if (cleanSessionId.length() <= MAX_SESSION_ID_LENGTH) {
-            return cleanSessionId;
-        }
-
-        // For very long session IDs, create a hash-based ID
-        String hashBasedId = "sess_" + Integer.toHexString(cleanSessionId.hashCode()) +
-                "_" + System.currentTimeMillis();
-        logger.warn("Session ID too long ({} chars), using hash-based ID: {}",
-                cleanSessionId.length(), hashBasedId);
-        return hashBasedId;
+        return sessionIdSanitizer.createSafeSessionId(originalSessionId, this::sessionExists);
     }
 
-    /**
-     * Clean session ID by removing duplicates and extra commas
-     */
     public String cleanSessionId(String sessionId) {
-        if (sessionId == null || sessionId.trim().isEmpty()) {
-            return sessionId;
-        }
-
-        String trimmed = sessionId.trim();
-
-        // If the session ID contains commas, take the first part
-        if (trimmed.contains(",")) {
-            String[] parts = trimmed.split(",");
-            for (String part : parts) {
-                String cleanPart = part.trim();
-                // Check if this part exists in the database
-                if (sessionExists(cleanPart)) {
-                    logger.info("Using valid session ID part: {}", cleanPart);
-                    return cleanPart;
-                }
-            }
-            // If no valid part found, use the first one
-            String cleanId = parts[0].trim();
-            logger.warn("No valid session ID found, using first part: {}", cleanId);
-            return cleanId;
-        }
-
-        return trimmed;
+        return sessionIdSanitizer.clean(sessionId, this::sessionExists);
     }
 
     @Transactional
@@ -118,7 +88,6 @@ public class SessionService {
         } catch (Exception e) {
             logger.error("Error creating/getting session for: {}", httpSessionId, e);
             clearPersistenceContext();
-            // Return a guaranteed safe session ID
             return UUID.randomUUID().toString();
         }
     }
@@ -139,7 +108,6 @@ public class SessionService {
             logger.error("Error creating new session: {}", safeSessionId, e);
             clearPersistenceContext();
 
-            // Final fallback - use UUID
             try {
                 String fallbackId = UUID.randomUUID().toString();
                 Session fallbackSession = new Session();
@@ -156,253 +124,36 @@ public class SessionService {
         }
     }
 
-    @Transactional
     public void saveAnswers(String sessionId, Map<String, String> formParams) {
-        Session session = null;
-        try {
-            String safeSessionId = createSafeSessionId(sessionId);
-            logger.info("Saving answers for session: {}, answers: {}", safeSessionId, formParams.keySet());
-
-            Optional<Session> sessionOpt = sessionRepository.findBySessionId(safeSessionId);
-            if (sessionOpt.isEmpty()) {
-                logger.warn("Session not found when saving answers: {}, creating new session", safeSessionId);
-                session = createNewSession(safeSessionId);
-            } else {
-                session = sessionOpt.get();
-                if (!isValidSessionState(session)) {
-                    logger.error("Invalid session state for: {}, recreating session", safeSessionId);
-                    clearPersistenceContext();
-                    session = createNewSession(safeSessionId);
-                }
-            }
-
-            // Verify session is properly managed and has an ID
-            if (session.getId() == null) {
-                logger.error("Session still has null ID after creation: {}", safeSessionId);
-                session = sessionRepository.saveAndFlush(session);
-            }
-
-            int savedCount = 0;
-            for (Map.Entry<String, String> entry : formParams.entrySet()) {
-                String questionKey = entry.getKey();
-                String answerValue = entry.getValue();
-
-                if (isValidAnswerParameter(questionKey, answerValue)) {
-                    if (saveOrUpdateAnswer(session, questionKey, answerValue)) {
-                        savedCount++;
-                    }
-                }
-            }
-
-            logger.info("Successfully saved {} answers for session: {}", savedCount, safeSessionId);
-
-        } catch (Exception e) {
-            logger.error("Error saving answers for session: {}", sessionId, e);
-            clearPersistenceContext();
-            throw new RuntimeException("Failed to save answers: " + e.getMessage(), e);
-        }
+        answerService.saveAnswers(sessionId, formParams);
     }
 
-    /**
-     * Enhanced method to ensure never returning null answers
-     */
     public Map<String, String> getCurrentAnswers(String sessionId) {
-        try {
-            String safeSessionId = createSafeSessionId(sessionId);
-            logger.debug("Getting current answers for session: {}", safeSessionId);
-
-            Optional<Session> sessionOpt = sessionRepository.findBySessionId(safeSessionId);
-            if (sessionOpt.isEmpty()) {
-                logger.warn("Session not found when getting answers: {}, returning empty answers", safeSessionId);
-                return new HashMap<>();
-            }
-
-            Session session = sessionOpt.get();
-            if (!isValidSessionState(session)) {
-                logger.error("Invalid session state when getting answers: {}", safeSessionId);
-                return new HashMap<>();
-            }
-
-            List<Answer> answers = answerRepository.findBySessionOrderByCreatedAtAsc(session);
-
-            Map<String, String> answerMap = answers.stream()
-                    .collect(Collectors.toMap(
-                            Answer::getQuestionKey,
-                            Answer::getAnswerValue,
-                            (oldValue, newValue) -> newValue
-                    ));
-
-            logger.debug("Found {} answers for session: {}", answerMap.size(), safeSessionId);
-            return answerMap;
-
-        } catch (Exception e) {
-            logger.error("Error getting current answers for session: {}", sessionId, e);
-            // Always return empty map instead of null
-            return new HashMap<>();
-        }
+        return answerService.getCurrentAnswers(sessionId);
     }
 
-    /**
-     * Enhanced method to retrieve answers from storage with null safety
-     */
-    private Map<String, String> retrieveAnswersFromStorage(String sessionId) {
-        try {
-            // Your existing logic to retrieve answers from database or session storage
-            // This should return either a Map of answers or empty map if none exist
-            Map<String, String> answers = getCurrentAnswers(sessionId);
-            return answers != null ? answers : new HashMap<>();
-        } catch (Exception e) {
-            logger.error("Error retrieving answers from storage for session: {}", sessionId, e);
-            return new HashMap<>();
-        }
-    }
-
-    @Transactional
     public Map<String, String> goBack(String sessionId) {
-        try {
-            String safeSessionId = createSafeSessionId(sessionId);
-            logger.info("Going back for session: {}", safeSessionId);
-
-            Optional<Session> sessionOpt = sessionRepository.findBySessionId(safeSessionId);
-            if (sessionOpt.isEmpty()) {
-                logger.warn("Session not found when going back: {}", safeSessionId);
-                return new HashMap<>();
-            }
-
-            Session session = sessionOpt.get();
-            if (!isValidSessionState(session)) {
-                logger.error("Invalid session state when going back: {}", safeSessionId);
-                return new HashMap<>();
-            }
-
-            Optional<Answer> lastAnswer = answerRepository.findTopBySessionOrderByCreatedAtDesc(session);
-
-            if (lastAnswer.isPresent()) {
-                Answer answerToRemove = lastAnswer.get();
-                logger.info("Removing last answer: {} = {}", answerToRemove.getQuestionKey(), answerToRemove.getAnswerValue());
-
-                answerRepository.delete(answerToRemove);
-                answerRepository.flush(); // Force flush to ensure delete is processed
-
-                List<Answer> remainingAnswers = answerRepository.findBySessionOrderByCreatedAtAsc(session);
-                Map<String, String> remainingAnswerMap = remainingAnswers.stream()
-                        .collect(Collectors.toMap(
-                                Answer::getQuestionKey,
-                                Answer::getAnswerValue
-                        ));
-
-                logger.info("After going back, {} answers remaining for session: {}", remainingAnswerMap.size(), safeSessionId);
-                return remainingAnswerMap;
-            }
-
-            logger.info("No answers to remove for session: {}", safeSessionId);
-            return new HashMap<>();
-
-        } catch (Exception e) {
-            logger.error("Error going back for session: {}", sessionId, e);
-            clearPersistenceContext();
-            return new HashMap<>();
-        }
+        return answerService.goBack(sessionId);
     }
 
-    @Transactional
     public void saveRiskAssessment(String sessionId, String riskLevel, Integer riskScore, String recommendations) {
-        try {
-            String safeSessionId = createSafeSessionId(sessionId);
-            logger.info("Saving risk assessment for session: {}, risk level: {}, score: {}",
-                    safeSessionId, riskLevel, riskScore);
-
-            Optional<Session> sessionOpt = sessionRepository.findBySessionId(safeSessionId);
-            if (sessionOpt.isEmpty()) {
-                logger.warn("Session not found when saving risk assessment: {}", safeSessionId);
-                throw new RuntimeException("Session not found: " + safeSessionId);
-            }
-
-            Session session = sessionOpt.get();
-            if (!isValidSessionState(session)) {
-                logger.error("Invalid session state when saving risk assessment: {}", safeSessionId);
-                throw new RuntimeException("Invalid session state: " + safeSessionId);
-            }
-
-            RiskAssessment assessment = new RiskAssessment();
-            assessment.setSession(session);
-            assessment.setRiskLevel(riskLevel);
-            assessment.setRiskScore(riskScore);
-
-            // Convert String to List<String> for JSON storage
-            List<String> recommendationsList = new ArrayList<>();
-            if (recommendations != null && !recommendations.trim().isEmpty()) {
-                // Split by semicolon (as used in DecisionService)
-                recommendationsList = Arrays.asList(recommendations.split("; "));
-            }
-            assessment.setRecommendations(recommendationsList);
-
-            riskAssessmentRepository.save(assessment);
-
-            // Update session with risk score and status
-            session.setRiskScore(riskScore);
-            session.setStatus("completed");
-            sessionRepository.save(session);
-
-            logger.info("Successfully saved risk assessment for session: {}", safeSessionId);
-
-        } catch (Exception e) {
-            logger.error("Error saving risk assessment for session: {}", sessionId, e);
-            clearPersistenceContext();
-            throw new RuntimeException("Failed to save risk assessment: " + e.getMessage(), e);
-        }
+        riskAssessmentPersistenceService.saveRiskAssessment(sessionId, riskLevel, riskScore, recommendations);
     }
 
     public Optional<RiskAssessment> getLatestRiskAssessment(String sessionId) {
-        try {
-            String safeSessionId = createSafeSessionId(sessionId);
-            return riskAssessmentRepository.findLatestBySessionId(safeSessionId);
-        } catch (Exception e) {
-            logger.error("Error getting latest risk assessment for session: {}", sessionId, e);
-            return Optional.empty();
-        }
+        return riskAssessmentPersistenceService.getLatestRiskAssessment(sessionId);
     }
 
     public Optional<Session> getSessionWithDetails(String sessionId) {
-        try {
-            String safeSessionId = createSafeSessionId(sessionId);
-            // Get session with answers first
-            Optional<Session> sessionWithAnswers = sessionRepository.findBySessionIdWithAnswers(safeSessionId);
-            if (sessionWithAnswers.isPresent()) {
-                Session session = sessionWithAnswers.get();
-                // If you need risk assessments, fetch them separately
-                List<RiskAssessment> riskAssessments = riskAssessmentRepository.findBySessionIdOrderByCreatedAtDesc(safeSessionId);
-                session.setRiskAssessments(riskAssessments);
-                return Optional.of(session);
-            }
-            return Optional.empty();
-        } catch (Exception e) {
-            logger.error("Error getting session with details: {}", sessionId, e);
-            return Optional.empty();
-        }
+        return riskAssessmentPersistenceService.getSessionWithDetails(sessionId);
     }
 
-    public Optional<Session> getSessionWithAnswers(String sessionId) {
-        try {
-            String safeSessionId = createSafeSessionId(sessionId);
-            return sessionRepository.findBySessionIdWithAnswers(safeSessionId);
-        } catch (Exception e) {
-            logger.error("Error getting session with answers: {}", sessionId, e);
-            return Optional.empty();
-        }
-    }
-
-    // Helper methods that throw exceptions for the ResultsController
     public RiskAssessment getLatestRiskAssessmentOrThrow(String sessionId) {
-        String safeSessionId = createSafeSessionId(sessionId);
-        return riskAssessmentRepository.findLatestBySessionId(safeSessionId)
-                .orElseThrow(() -> new RuntimeException("No risk assessment found for session: " + safeSessionId));
+        return riskAssessmentPersistenceService.getLatestRiskAssessmentOrThrow(sessionId);
     }
 
     public Session getSessionWithDetailsOrThrow(String sessionId) {
-        String safeSessionId = createSafeSessionId(sessionId);
-        return getSessionWithDetails(safeSessionId)
-                .orElseThrow(() -> new RuntimeException("Session not found: " + safeSessionId));
+        return riskAssessmentPersistenceService.getSessionWithDetailsOrThrow(sessionId);
     }
 
     @Transactional
@@ -455,33 +206,6 @@ public class SessionService {
         return sessionRepository.findTopByUserIdOrderByCreatedAtDesc(userId);
     }
 
-    public List<Answer> getSessionAnswers(String sessionId) {
-        try {
-            String safeSessionId = createSafeSessionId(sessionId);
-            Optional<Session> sessionOpt = sessionRepository.findBySessionId(safeSessionId);
-            if (sessionOpt.isPresent() && isValidSessionState(sessionOpt.get())) {
-                return answerRepository.findBySessionOrderByCreatedAtAsc(sessionOpt.get());
-            }
-            return List.of();
-        } catch (Exception e) {
-            logger.error("Error getting session answers: {}", sessionId, e);
-            return List.of();
-        }
-    }
-
-    public boolean hasCompletedAssessment(String sessionId) {
-        try {
-            String safeSessionId = createSafeSessionId(sessionId);
-            Optional<Session> sessionOpt = sessionRepository.findBySessionId(safeSessionId);
-            return sessionOpt.map(session ->
-                    "completed".equals(session.getStatus()) && isValidSessionState(session)
-            ).orElse(false);
-        } catch (Exception e) {
-            logger.error("Error checking if session completed: {}", sessionId, e);
-            return false;
-        }
-    }
-
     @Scheduled(cron = "0 0 3 * * *") // nightly at 3am
     @Transactional
     public void cleanupOldSessions() {
@@ -497,11 +221,9 @@ public class SessionService {
             for (Session session : oldSessions) {
                 if (isValidSessionState(session)) {
                     try {
-                        // Delete associated answers and risk assessments first
                         answerRepository.deleteBySession(session);
                         riskAssessmentRepository.deleteBySession_SessionId(session.getSessionId());
 
-                        // Then delete the session
                         sessionRepository.delete(session);
                         deletedCount++;
                         logger.debug("Cleaned up old session: {}", session.getSessionId());
@@ -540,7 +262,6 @@ public class SessionService {
         }
     }
 
-    // Validation helper methods
     private boolean isValidSessionState(Session session) {
         return session != null &&
                 session.getId() != null &&
@@ -557,95 +278,5 @@ public class SessionService {
         } catch (Exception e) {
             logger.warn("Error clearing persistence context", e);
         }
-    }
-
-    private boolean saveOrUpdateAnswer(Session session, String questionKey, String answerValue) {
-        try {
-            Optional<Answer> existingAnswer = answerRepository.findBySessionAndQuestionKey(session, questionKey);
-
-            if (existingAnswer.isPresent()) {
-                Answer answer = existingAnswer.get();
-                answer.setAnswerValue(answerValue);
-                answerRepository.save(answer);
-                logger.debug("Updated answer for question: {}", questionKey);
-            } else {
-                Answer answer = new Answer();
-                answer.setQuestionKey(questionKey);
-                answer.setAnswerValue(answerValue);
-                answer.setSession(session);
-                answerRepository.save(answer);
-                logger.debug("Created new answer for question: {}", questionKey);
-            }
-            return true;
-        } catch (Exception e) {
-            logger.error("Error saving answer for question: {}", questionKey, e);
-            return false;
-        }
-    }
-
-    private boolean isValidAnswerParameter(String questionKey, String answerValue) {
-        return !"sessionId".equals(questionKey) &&
-                answerValue != null &&
-                !answerValue.trim().isEmpty();
-    }
-
-    // Debug method to log session state
-    public void logSessionState(String sessionId) {
-        try {
-            String safeSessionId = createSafeSessionId(sessionId);
-            Optional<Session> sessionOpt = sessionRepository.findBySessionId(safeSessionId);
-            if (sessionOpt.isPresent()) {
-                Session session = sessionOpt.get();
-                logger.info("Session State - SessionID: {}, Entity ID: {}, Status: {}, Answers: {}, RiskAssessments: {}",
-                        session.getSessionId(),
-                        session.getId(),
-                        session.getStatus(),
-                        session.getAnswers() != null ? session.getAnswers().size() : 0,
-                        session.getRiskAssessments() != null ? session.getRiskAssessments().size() : 0);
-            } else {
-                logger.info("Session not found: {}", safeSessionId);
-            }
-        } catch (Exception e) {
-            logger.error("Error logging session state: {}", sessionId, e);
-        }
-    }
-
-    public void debugSessionState(String sessionId) {
-        try {
-            String cleanSessionId = cleanSessionId(sessionId);
-            Optional<Session> sessionOpt = sessionRepository.findBySessionId(cleanSessionId);
-
-            if (sessionOpt.isPresent()) {
-                Session session = sessionOpt.get();
-                List<Answer> answers = answerRepository.findBySessionOrderByCreatedAtAsc(session);
-
-                logger.info("=== SESSION DEBUG ===");
-                logger.info("Session ID: {}", session.getSessionId());
-                logger.info("Entity ID: {}", session.getId());
-                logger.info("Status: {}", session.getStatus());
-                logger.info("Answer Count: {}", answers.size());
-                logger.info("Answers: {}", answers.stream()
-                        .map(a -> a.getQuestionKey() + "=" + a.getAnswerValue())
-                        .collect(Collectors.joining(", ")));
-            } else {
-                logger.warn("Session not found: {}", cleanSessionId);
-            }
-        } catch (Exception e) {
-            logger.error("Error debugging session: {}", sessionId, e);
-        }
-    }
-
-    // Statistics methods
-    public Map<String, Object> getSessionStatistics() {
-        Map<String, Object> stats = new HashMap<>();
-        try {
-            stats.put("totalSessions", sessionRepository.count());
-            stats.put("activeSessions", sessionRepository.countByStatus("active"));
-            stats.put("completedSessions", sessionRepository.countByStatus("completed"));
-            stats.put("totalRiskAssessments", riskAssessmentRepository.count());
-        } catch (Exception e) {
-            logger.error("Error getting session statistics", e);
-        }
-        return stats;
     }
 }
