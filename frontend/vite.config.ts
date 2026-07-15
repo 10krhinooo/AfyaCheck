@@ -1,12 +1,13 @@
 /// <reference types="vitest/config" />
 import type { UserConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import type { ViteReactSSGOptions } from 'vite-react-ssg'
 import type { InlineConfig as VitestInlineConfig } from 'vitest/node'
 
 // https://vite.dev/config/
 export default {
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   server: {
     proxy: {
       // Forwards to the local Spring Boot backend during dev so cookies/CORS

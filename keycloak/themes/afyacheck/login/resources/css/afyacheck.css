@@ -1,0 +1,130 @@
+/*
+ * AfyaCheck theme for Keycloak's hosted login/register/forgot-password/verify-email screens.
+ * Mirrors frontend/src/index.css's design tokens so the identity provider doesn't read as a
+ * jarring "generic auth vendor" screen in the middle of the product's flow.
+ */
+
+/* Self-hosted (not Google Fonts CDN) — this is a confidential health-screening product, and
+   the login screen shouldn't leak a visitor's IP to a third party before they've even signed
+   in. Mirrors the frontend's identical choice (see frontend/src/index.css). */
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/inter-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/inter-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/inter-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/fraunces-latin-wght-normal.woff2') format('woff2-variations');
+}
+
+:root,
+:root.pf-v5-theme-dark {
+  --pf-v5-global--primary-color--100: #2f7d6d;
+  --pf-v5-global--primary-color--200: #256456;
+  --pf-v5-global--BackgroundColor--100: #faf7f2;
+  --pf-v5-global--BackgroundColor--dark-100: #faf7f2;
+  --pf-v5-global--Color--100: #1c2521;
+  --pf-v5-global--Color--200: #4a564f;
+  --pf-v5-global--BorderColor--100: #d3e9e4;
+  --pf-v5-global--link--Color: #256456;
+  --pf-v5-global--link--Color--hover: #1c4c41;
+  --pf-v5-global--danger-color--100: #c4523f;
+  --pf-v5-global--success-color--100: #2f7d6d;
+  --pf-v5-global--BorderRadius--lg: 1.25rem;
+}
+
+body {
+  background: #faf7f2 !important;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif !important;
+  color: #1c2521;
+}
+
+#kc-header-wrapper,
+.login-pf-header h1,
+#kc-page-title {
+  font-family: 'Fraunces', ui-serif, Georgia, serif !important;
+  font-weight: 600 !important;
+  color: #1c4c41 !important;
+  letter-spacing: -0.01em;
+}
+
+.card-pf,
+.login-pf-page-header,
+#kc-form-wrapper,
+.pf-v5-c-login__main-body {
+  border-radius: 1.25rem !important;
+  box-shadow: 0 1px 2px rgba(16, 42, 36, 0.06), 0 8px 24px -12px rgba(16, 42, 36, 0.18) !important;
+  border: none !important;
+}
+
+.pf-v5-c-button.pf-m-primary,
+#kc-login,
+input[type="submit"] {
+  background-color: #256456 !important;
+  border-radius: 999px !important;
+  border: none !important;
+  font-weight: 500;
+}
+
+.pf-v5-c-button.pf-m-primary:hover,
+#kc-login:hover {
+  background-color: #1c4c41 !important;
+}
+
+.pf-v5-c-form-control,
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+  border-radius: 0.75rem !important;
+  border-color: #d3e9e4 !important;
+}
+
+.pf-v5-c-form-control:focus,
+input:focus {
+  outline: 3px solid #2f7d6d !important;
+  outline-offset: 2px;
+  border-color: #2f7d6d !important;
+}
+
+a,
+#kc-registration a,
+#kc-info-wrapper a {
+  color: #256456 !important;
+}
+
+a:hover {
+  color: #1c4c41 !important;
+}
+
+.alert-error,
+.pf-v5-c-alert.pf-m-danger {
+  background-color: #fbe1de !important;
+  border-color: #c4523f !important;
+  color: #93392a !important;
+}
+
+.alert-success,
+.pf-v5-c-alert.pf-m-success {
+  background-color: #eef6f4 !important;
+  border-color: #2f7d6d !important;
+  color: #1c4c41 !important;
+}

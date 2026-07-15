@@ -15,6 +15,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     Optional<User> findByUsername(String username);
     Optional<User> findByProviderAndProviderId(AuthProvider provider, String providerId);
+    Optional<User> findByKeycloakId(String keycloakId);
 
     // Count users active after a certain date (using updatedAt as last active)
     @Query("SELECT COUNT(u) FROM User u WHERE u.updatedAt > :date")

@@ -1,17 +1,15 @@
 package com.kimanga.afyacheck.controllers;
 
-import com.kimanga.afyacheck.model.Session;
 import com.kimanga.afyacheck.service.DecisionService;
 import com.kimanga.afyacheck.service.SessionService;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
-import org.springframework.ui.ExtendedModelMap;
-import org.springframework.ui.Model;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,113 +29,89 @@ class QuestionControllerTest {
     }
 
     @Test
-    void startQuestionnaireRendersFirstQuestion() {
+    void startReturnsFirstQuestion() {
         when(sessionService.createOrGetSession("http-sid")).thenReturn("app-sid");
         Map<String, Object> question = new HashMap<>();
         question.put("key", "consent");
         question.put("options", "Yes,No");
         when(decisionService.getNextQuestion(any())).thenReturn(question);
-        when(sessionService.getCurrentAnswers("app-sid")).thenReturn(Map.of());
 
-        Model model = new ExtendedModelMap();
-        String view = controller.startQuestionnaire(httpSession("http-sid"), model);
+        ResponseEntity<Map<String, Object>> response = controller.start(httpSession("http-sid"));
 
-        assertThat(view).isEqualTo("questionnaire");
-        assertThat(model.getAttribute("sessionId")).isEqualTo("app-sid");
-        assertThat(model.getAttribute("question")).isInstanceOf(Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("sessionId", "app-sid").containsEntry("canGoBack", false);
         @SuppressWarnings("unchecked")
-        Map<String, Object> q = (Map<String, Object>) model.getAttribute("question");
+        Map<String, Object> q = (Map<String, Object>) response.getBody().get("question");
         assertThat(q.get("options")).isEqualTo(List.of("Yes", "No"));
     }
 
     @Test
-    void startQuestionnaireReturnsErrorPageWhenDecisionServiceReportsError() {
+    void startReturns500WhenDecisionServiceReportsError() {
         when(sessionService.createOrGetSession("http-sid2")).thenReturn("app-sid2");
         Map<String, Object> question = new HashMap<>();
         question.put("error", "something failed");
         when(decisionService.getNextQuestion(any())).thenReturn(question);
 
-        Model model = new ExtendedModelMap();
-        String view = controller.startQuestionnaire(httpSession("http-sid2"), model);
+        ResponseEntity<Map<String, Object>> response = controller.start(httpSession("http-sid2"));
 
-        assertThat(view).isEqualTo("error-page");
-        assertThat(model.getAttribute("error")).isEqualTo("something failed");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).containsEntry("error", "something failed");
     }
 
     @Test
-    void startQuestionnaireHandlesNullAnswersFromSessionService() {
-        when(sessionService.createOrGetSession("http-sid3")).thenReturn("app-sid3");
-        when(decisionService.getNextQuestion(any())).thenReturn(new HashMap<>(Map.of("key", "q1")));
-        when(sessionService.getCurrentAnswers("app-sid3")).thenReturn(null);
-
-        Model model = new ExtendedModelMap();
-        String view = controller.startQuestionnaire(httpSession("http-sid3"), model);
-
-        assertThat(view).isEqualTo("questionnaire");
-        assertThat(model.getAttribute("answers")).isEqualTo(new HashMap<>());
-    }
-
-    @Test
-    void startQuestionnaireReturnsErrorPageOnException() {
+    void startReturns500OnException() {
         when(sessionService.createOrGetSession(anyString())).thenThrow(new RuntimeException("boom"));
 
-        Model model = new ExtendedModelMap();
-        String view = controller.startQuestionnaire(httpSession("http-sid4"), model);
+        ResponseEntity<Map<String, Object>> response = controller.start(httpSession("http-sid4"));
 
-        assertThat(view).isEqualTo("error-page");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
-    void nextQuestionReturnsQuestionnaireViewWhenNotEnded() {
+    void nextReturnsQuestionWhenNotEnded() {
         when(sessionService.getCurrentAnswers("sid-1")).thenReturn(new HashMap<>());
         Map<String, Object> nextStep = new HashMap<>();
         nextStep.put("key", "q2");
         nextStep.put("options", "A,B");
         when(decisionService.getNextQuestion(any())).thenReturn(nextStep);
 
-        Map<String, String> formParams = new HashMap<>();
-        formParams.put("q1", "answer");
+        ResponseEntity<Map<String, Object>> response =
+                controller.next(new QuestionController.NextRequest("sid-1", Map.of("q1", "answer")));
 
-        Model model = new ExtendedModelMap();
-        String view = controller.nextQuestion(formParams, "sid-1", httpSession("http"), model);
-
-        assertThat(view).isEqualTo("questionnaire");
-        assertThat(model.getAttribute("canGoBack")).isEqualTo(true);
+        assertThat(response.getBody()).containsEntry("canGoBack", true);
     }
 
     @Test
-    void nextQuestionHandlesNullAnswersFromSessionService() {
+    void nextHandlesNullAnswersFromSessionService() {
         when(sessionService.getCurrentAnswers("sid-1b")).thenReturn(null);
         Map<String, Object> nextStep = new HashMap<>();
         nextStep.put("key", "q2");
         when(decisionService.getNextQuestion(any())).thenReturn(nextStep);
 
-        Model model = new ExtendedModelMap();
-        String view = controller.nextQuestion(Map.of("q1", "answer"), "sid-1b", httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response =
+                controller.next(new QuestionController.NextRequest("sid-1b", Map.of("q1", "answer")));
 
-        assertThat(view).isEqualTo("questionnaire");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void nextQuestionHandlesConsentDenied() {
+    void nextHandlesConsentDenied() {
         when(sessionService.getCurrentAnswers("sid-2")).thenReturn(new HashMap<>());
         Map<String, Object> nextStep = new HashMap<>();
         nextStep.put("end", true);
         nextStep.put("consentDenied", true);
         nextStep.put("text", "denied");
         when(decisionService.getNextQuestion(any())).thenReturn(nextStep);
-        when(sessionService.getSessionWithDetails("sid-2")).thenReturn(Optional.of(new Session()));
 
-        Model model = new ExtendedModelMap();
-        String view = controller.nextQuestion(Map.of(), "sid-2", httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response =
+                controller.next(new QuestionController.NextRequest("sid-2", Map.of()));
 
-        assertThat(view).isEqualTo("results");
-        assertThat(model.getAttribute("consentDenied")).isEqualTo(true);
+        assertThat(response.getBody()).containsEntry("consentDenied", true);
         verify(sessionService).completeSession("sid-2");
     }
 
     @Test
-    void nextQuestionSavesRiskAssessmentWhenSurveyEndsWithScore() {
+    void nextSavesRiskAssessmentWhenSurveyEndsWithScore() {
         when(sessionService.getCurrentAnswers("sid-3")).thenReturn(new HashMap<>());
         Map<String, Object> nextStep = new HashMap<>();
         nextStep.put("end", true);
@@ -146,18 +120,16 @@ class QuestionControllerTest {
         nextStep.put("recommendations", "Rec1; Rec2");
         nextStep.put("text", "done");
         when(decisionService.getNextQuestion(any())).thenReturn(nextStep);
-        when(sessionService.getSessionWithDetails("sid-3")).thenReturn(Optional.of(new Session()));
 
-        Model model = new ExtendedModelMap();
-        String view = controller.nextQuestion(Map.of(), "sid-3", httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response =
+                controller.next(new QuestionController.NextRequest("sid-3", Map.of()));
 
-        assertThat(view).isEqualTo("results");
-        assertThat(model.getAttribute("riskScore")).isEqualTo(80);
+        assertThat(response.getBody()).containsEntry("riskScore", 80);
         verify(sessionService).saveRiskAssessment("sid-3", "High", 80, "Rec1; Rec2");
     }
 
     @Test
-    void nextQuestionFallsBackToCalculateRiskScoreWhenNoRiskScoreInResult() {
+    void nextFallsBackToCalculateRiskScoreWhenNoRiskScoreInResult() {
         when(sessionService.getCurrentAnswers("sid-4")).thenReturn(new HashMap<>());
         Map<String, Object> nextStep = new HashMap<>();
         nextStep.put("end", true);
@@ -168,28 +140,26 @@ class QuestionControllerTest {
         fallbackAssessment.put("riskLevel", "Medium");
         fallbackAssessment.put("recommendations", "RecA; RecB");
         when(decisionService.calculateRiskScore(any())).thenReturn(fallbackAssessment);
-        when(sessionService.getSessionWithDetails("sid-4")).thenReturn(Optional.of(new Session()));
 
-        Model model = new ExtendedModelMap();
-        String view = controller.nextQuestion(Map.of(), "sid-4", httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response =
+                controller.next(new QuestionController.NextRequest("sid-4", Map.of()));
 
-        assertThat(view).isEqualTo("results");
-        assertThat(model.getAttribute("riskScore")).isEqualTo(40);
+        assertThat(response.getBody()).containsEntry("riskScore", 40);
         verify(sessionService).saveRiskAssessment("sid-4", "Medium", 40, "RecA; RecB");
     }
 
     @Test
-    void nextQuestionReturnsErrorPageOnException() {
+    void nextReturns500OnException() {
         when(sessionService.getCurrentAnswers(anyString())).thenThrow(new RuntimeException("boom"));
 
-        Model model = new ExtendedModelMap();
-        String view = controller.nextQuestion(Map.of(), "sid-5", httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response =
+                controller.next(new QuestionController.NextRequest("sid-5", Map.of()));
 
-        assertThat(view).isEqualTo("error-page");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
-    void previousQuestionReturnsQuestionnaireView() {
+    void backReturnsPreviousQuestion() {
         Map<String, String> remaining = new HashMap<>();
         remaining.put("q1", "yes");
         when(sessionService.goBack("sid-6")).thenReturn(remaining);
@@ -197,51 +167,45 @@ class QuestionControllerTest {
         question.put("key", "q1");
         when(decisionService.getNextQuestion(any())).thenReturn(question);
 
-        Model model = new ExtendedModelMap();
-        String view = controller.previousQuestion("sid-6", Map.of(), httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response = controller.back(new QuestionController.BackRequest("sid-6"));
 
-        assertThat(view).isEqualTo("questionnaire");
-        assertThat(model.getAttribute("canGoBack")).isEqualTo(true);
+        assertThat(response.getBody()).containsEntry("canGoBack", true);
     }
 
     @Test
-    void previousQuestionConvertsOptionsStringToList() {
+    void backConvertsOptionsStringToList() {
         when(sessionService.goBack("sid-6b")).thenReturn(new HashMap<>());
         Map<String, Object> question = new HashMap<>();
         question.put("key", "q1");
         question.put("options", "X,Y,Z");
         when(decisionService.getNextQuestion(any())).thenReturn(question);
 
-        Model model = new ExtendedModelMap();
-        controller.previousQuestion("sid-6b", Map.of(), httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response = controller.back(new QuestionController.BackRequest("sid-6b"));
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> q = (Map<String, Object>) model.getAttribute("question");
+        Map<String, Object> q = (Map<String, Object>) response.getBody().get("question");
         assertThat(q.get("options")).isEqualTo(List.of("X", "Y", "Z"));
     }
 
     @Test
-    void previousQuestionHandlesNullAnswersFromGoBack() {
+    void backHandlesNullAnswersFromGoBack() {
         when(sessionService.goBack("sid-7")).thenReturn(null);
         when(decisionService.getNextQuestion(any())).thenReturn(new HashMap<>(Map.of("key", "consent")));
 
-        Model model = new ExtendedModelMap();
-        String view = controller.previousQuestion("sid-7", Map.of(), httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response = controller.back(new QuestionController.BackRequest("sid-7"));
 
-        assertThat(view).isEqualTo("questionnaire");
         // The controller unconditionally adds "_sessionId" to previousAnswers before
         // checking isEmpty(), so canGoBack is always true even with no real answers.
-        assertThat(model.getAttribute("canGoBack")).isEqualTo(true);
+        assertThat(response.getBody()).containsEntry("canGoBack", true);
     }
 
     @Test
-    void previousQuestionReturnsErrorPageOnException() {
+    void backReturns500OnException() {
         when(sessionService.goBack(anyString())).thenThrow(new RuntimeException("boom"));
 
-        Model model = new ExtendedModelMap();
-        String view = controller.previousQuestion("sid-8", Map.of(), httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response = controller.back(new QuestionController.BackRequest("sid-8"));
 
-        assertThat(view).isEqualTo("error-page");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
@@ -251,25 +215,25 @@ class QuestionControllerTest {
         when(sessionService.getCurrentAnswers("valid")).thenReturn(new HashMap<>());
         when(decisionService.getNextQuestion(any())).thenReturn(new HashMap<>(Map.of("key", "q1")));
 
-        Model model = new ExtendedModelMap();
-        controller.nextQuestion(Map.of(), "other,valid", httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response =
+                controller.next(new QuestionController.NextRequest("other,valid", Map.of()));
 
-        assertThat(model.getAttribute("sessionId")).isEqualTo("valid");
+        assertThat(response.getBody()).containsEntry("sessionId", "valid");
     }
 
     @Test
-    void nextQuestionConvertsEmptyOptionsStringToEmptyList() {
+    void nextConvertsEmptyOptionsStringToEmptyList() {
         when(sessionService.getCurrentAnswers("sid-empty-opts")).thenReturn(new HashMap<>());
         Map<String, Object> nextStep = new HashMap<>();
         nextStep.put("key", "q1");
         nextStep.put("options", "");
         when(decisionService.getNextQuestion(any())).thenReturn(nextStep);
 
-        Model model = new ExtendedModelMap();
-        controller.nextQuestion(Map.of(), "sid-empty-opts", httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response =
+                controller.next(new QuestionController.NextRequest("sid-empty-opts", Map.of()));
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> q = (Map<String, Object>) model.getAttribute("question");
+        Map<String, Object> q = (Map<String, Object>) response.getBody().get("question");
         assertThat(q.get("options")).isEqualTo(List.of());
     }
 
@@ -279,10 +243,10 @@ class QuestionControllerTest {
         when(sessionService.getCurrentAnswers("first")).thenReturn(new HashMap<>());
         when(decisionService.getNextQuestion(any())).thenReturn(new HashMap<>(Map.of("key", "q1")));
 
-        Model model = new ExtendedModelMap();
-        controller.nextQuestion(Map.of(), "first,second", httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response =
+                controller.next(new QuestionController.NextRequest("first,second", Map.of()));
 
-        assertThat(model.getAttribute("sessionId")).isEqualTo("first");
+        assertThat(response.getBody()).containsEntry("sessionId", "first");
     }
 
     @Test
@@ -290,10 +254,9 @@ class QuestionControllerTest {
         when(sessionService.getCurrentAnswers("")).thenReturn(new HashMap<>());
         when(decisionService.getNextQuestion(any())).thenReturn(new HashMap<>(Map.of("key", "q1")));
 
-        Model model = new ExtendedModelMap();
-        controller.nextQuestion(Map.of(), "", httpSession("http"), model);
+        ResponseEntity<Map<String, Object>> response = controller.next(new QuestionController.NextRequest("", Map.of()));
 
-        assertThat(model.getAttribute("sessionId")).isEqualTo("");
+        assertThat(response.getBody()).containsEntry("sessionId", "");
     }
 
     @Test

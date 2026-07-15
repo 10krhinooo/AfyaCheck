@@ -6,14 +6,16 @@ import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.service.AdminService;
 import com.kimanga.afyacheck.service.UserService;
 import org.junit.jupiter.api.Test;
-import org.springframework.ui.ExtendedModelMap;
-import org.springframework.ui.Model;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,222 +45,189 @@ class AdminControllerTest {
     }
 
     @Test
-    void adminDashboardPopulatesModel() {
+    void dashboardReturnsStats() {
         stubDashboardData();
-        Model model = new ExtendedModelMap();
 
-        String view = controller.adminDashboard(model);
+        ResponseEntity<?> response = controller.dashboard();
 
-        assertThat(view).isEqualTo("admin-dashboard");
-        assertThat(model.getAttribute("totalUsers")).isEqualTo(10L);
-        assertThat(model.getAttribute("pageTitle")).isEqualTo("Admin Dashboard");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        var body = (AdminController.DashboardResponse) response.getBody();
+        assertThat(body.totalUsers()).isEqualTo(10L);
     }
 
     @Test
-    void adminDashboardFallsBackOnException() {
+    void dashboardReturns500OnException() {
         when(adminService.getDashboardStats()).thenThrow(new RuntimeException("boom"));
-        Model model = new ExtendedModelMap();
 
-        controller.adminDashboard(model);
+        ResponseEntity<?> response = controller.dashboard();
 
-        assertThat(model.getAttribute("totalUsers")).isEqualTo(0);
-        assertThat(model.getAttribute("error")).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
-    void usersManagementPopulatesModel() {
+    void usersReturnsAllUsers() {
         when(adminService.getAllUsers()).thenReturn(List.of());
         when(adminService.getDashboardStats()).thenReturn(stats());
         when(adminService.getAdminUsersCount()).thenReturn(3L);
 
-        Model model = new ExtendedModelMap();
-        String view = controller.usersManagement(model);
+        ResponseEntity<?> response = controller.users();
 
-        assertThat(view).isEqualTo("admin-users");
-        assertThat(model.getAttribute("adminUsersCount")).isEqualTo(3L);
+        var body = (AdminController.UsersResponse) response.getBody();
+        assertThat(body.adminUsersCount()).isEqualTo(3L);
     }
 
     @Test
-    void usersManagementFallsBackOnException() {
+    void usersReturns500OnException() {
         when(adminService.getAllUsers()).thenThrow(new RuntimeException("boom"));
-        Model model = new ExtendedModelMap();
 
-        String view = controller.usersManagement(model);
+        ResponseEntity<?> response = controller.users();
 
-        assertThat(view).isEqualTo("admin-users");
-        assertThat(model.getAttribute("error")).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
-    void toggleUserStatusRedirectsOnSuccess() {
+    void toggleUserStatusReturnsOkOnSuccess() {
         when(adminService.toggleUserStatus(1L)).thenReturn(ServiceResult.success("ok", null));
-        Model model = new ExtendedModelMap();
 
-        String view = controller.toggleUserStatus(1L, model);
+        ResponseEntity<?> response = controller.toggleUserStatus(new AdminController.ToggleStatusRequest(1L));
 
-        assertThat(view).isEqualTo("redirect:/admin/users");
-        assertThat(model.getAttribute("successMessage")).isEqualTo("ok");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void toggleUserStatusHandlesFailureResult() {
+    void toggleUserStatusReturnsBadRequestOnFailureResult() {
         when(adminService.toggleUserStatus(1L)).thenReturn(ServiceResult.failure("nope"));
-        Model model = new ExtendedModelMap();
 
-        controller.toggleUserStatus(1L, model);
+        ResponseEntity<?> response = controller.toggleUserStatus(new AdminController.ToggleStatusRequest(1L));
 
-        assertThat(model.getAttribute("errorMessage")).isEqualTo("nope");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
-    void toggleUserStatusHandlesException() {
+    void toggleUserStatusReturns500OnException() {
         when(adminService.toggleUserStatus(1L)).thenThrow(new RuntimeException("boom"));
-        Model model = new ExtendedModelMap();
 
-        controller.toggleUserStatus(1L, model);
+        ResponseEntity<?> response = controller.toggleUserStatus(new AdminController.ToggleStatusRequest(1L));
 
-        assertThat(model.getAttribute("errorMessage")).isEqualTo("Error updating user status");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
-    void questionsManagementPopulatesModel() {
+    void questionsReturnsAllQuestions() {
         when(adminService.getAllQuestions()).thenReturn(List.of(new Question()));
         when(adminService.getAnswerStatistics()).thenReturn(Map.of());
 
-        Model model = new ExtendedModelMap();
-        String view = controller.questionsManagement(model);
+        ResponseEntity<?> response = controller.questions();
 
-        assertThat(view).isEqualTo("admin-questions");
-        assertThat((List<?>) model.getAttribute("questions")).hasSize(1);
+        var body = (AdminController.QuestionsResponse) response.getBody();
+        assertThat(body.questions()).hasSize(1);
     }
 
     @Test
-    void questionsManagementFallsBackOnException() {
+    void questionsReturns500OnException() {
         when(adminService.getAllQuestions()).thenThrow(new RuntimeException("boom"));
-        Model model = new ExtendedModelMap();
 
-        String view = controller.questionsManagement(model);
+        ResponseEntity<?> response = controller.questions();
 
-        assertThat(view).isEqualTo("admin-questions");
-        assertThat(model.getAttribute("error")).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
-    void addQuestionRedirects() {
-        when(adminService.addQuestion(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(ServiceResult.success("added", new Question()));
-        Model model = new ExtendedModelMap();
+    void addQuestionReturnsOkOnSuccess() {
+        when(adminService.addQuestion(any())).thenReturn(ServiceResult.success("added", new Question()));
 
-        String view = controller.addQuestion(new Question(), model);
+        ResponseEntity<?> response = controller.addQuestion(new Question());
 
-        assertThat(view).isEqualTo("redirect:/admin/questions");
-        assertThat(model.getAttribute("successMessage")).isEqualTo("added");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void addQuestionHandlesException() {
-        when(adminService.addQuestion(org.mockito.ArgumentMatchers.any())).thenThrow(new RuntimeException("boom"));
-        Model model = new ExtendedModelMap();
+    void addQuestionReturns500OnException() {
+        when(adminService.addQuestion(any())).thenThrow(new RuntimeException("boom"));
 
-        controller.addQuestion(new Question(), model);
+        ResponseEntity<?> response = controller.addQuestion(new Question());
 
-        assertThat(model.getAttribute("errorMessage")).isEqualTo("Error adding question");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
-    void addQuestionSetsErrorMessageOnFailureResult() {
-        when(adminService.addQuestion(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(ServiceResult.failure("invalid question"));
-        Model model = new ExtendedModelMap();
+    void addQuestionReturnsBadRequestOnFailureResult() {
+        when(adminService.addQuestion(any())).thenReturn(ServiceResult.failure("invalid question"));
 
-        controller.addQuestion(new Question(), model);
+        ResponseEntity<?> response = controller.addQuestion(new Question());
 
-        assertThat(model.getAttribute("errorMessage")).isEqualTo("invalid question");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
-    void deleteQuestionRedirects() {
+    void deleteQuestionReturnsOkOnSuccess() {
         when(adminService.deleteQuestion(1L)).thenReturn(ServiceResult.success("deleted", null));
-        Model model = new ExtendedModelMap();
 
-        String view = controller.deleteQuestion(1L, model);
+        ResponseEntity<?> response = controller.deleteQuestion(new AdminController.DeleteQuestionRequest(1L));
 
-        assertThat(view).isEqualTo("redirect:/admin/questions");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void deleteQuestionHandlesException() {
+    void deleteQuestionReturns500OnException() {
         when(adminService.deleteQuestion(1L)).thenThrow(new RuntimeException("boom"));
-        Model model = new ExtendedModelMap();
 
-        controller.deleteQuestion(1L, model);
+        ResponseEntity<?> response = controller.deleteQuestion(new AdminController.DeleteQuestionRequest(1L));
 
-        assertThat(model.getAttribute("errorMessage")).isEqualTo("Error deleting question");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
-    void deleteQuestionSetsErrorMessageOnFailureResult() {
+    void deleteQuestionReturnsBadRequestOnFailureResult() {
         when(adminService.deleteQuestion(1L)).thenReturn(ServiceResult.failure("not found"));
-        Model model = new ExtendedModelMap();
 
-        controller.deleteQuestion(1L, model);
+        ResponseEntity<?> response = controller.deleteQuestion(new AdminController.DeleteQuestionRequest(1L));
 
-        assertThat(model.getAttribute("errorMessage")).isEqualTo("not found");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
-    void updateQuestionRedirects() {
-        when(adminService.updateQuestion(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.any()))
-                .thenReturn(ServiceResult.success("updated", new Question()));
-        Model model = new ExtendedModelMap();
+    void updateQuestionReturnsOkOnSuccess() {
+        when(adminService.updateQuestion(eq(1L), any())).thenReturn(ServiceResult.success("updated", new Question()));
 
-        String view = controller.updateQuestion(1L, new Question(), model);
+        ResponseEntity<?> response = controller.updateQuestion(1L, new Question());
 
-        assertThat(view).isEqualTo("redirect:/admin/questions");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void updateQuestionHandlesException() {
-        when(adminService.updateQuestion(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.any()))
-                .thenThrow(new RuntimeException("boom"));
-        Model model = new ExtendedModelMap();
+    void updateQuestionReturns500OnException() {
+        when(adminService.updateQuestion(eq(1L), any())).thenThrow(new RuntimeException("boom"));
 
-        controller.updateQuestion(1L, new Question(), model);
+        ResponseEntity<?> response = controller.updateQuestion(1L, new Question());
 
-        assertThat(model.getAttribute("errorMessage")).isEqualTo("Error updating question");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test
-    void updateQuestionSetsErrorMessageOnFailureResult() {
-        when(adminService.updateQuestion(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.any()))
-                .thenReturn(ServiceResult.failure("bad update"));
-        Model model = new ExtendedModelMap();
+    void updateQuestionReturnsBadRequestOnFailureResult() {
+        when(adminService.updateQuestion(eq(1L), any())).thenReturn(ServiceResult.failure("bad update"));
 
-        controller.updateQuestion(1L, new Question(), model);
+        ResponseEntity<?> response = controller.updateQuestion(1L, new Question());
 
-        assertThat(model.getAttribute("errorMessage")).isEqualTo("bad update");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
     void makeUserAdminSucceeds() {
         when(userService.makeAdmin("a@b.com")).thenReturn(ServiceResult.success("promoted", null));
-        stubDashboardData();
-        Model model = new ExtendedModelMap();
 
-        String view = controller.makeUserAdmin("a@b.com", model);
+        ResponseEntity<?> response = controller.makeUserAdmin(new AdminController.MakeAdminRequest("a@b.com"));
 
-        assertThat(view).isEqualTo("admin-dashboard");
-        assertThat(model.getAttribute("successMessage")).isEqualTo("promoted");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
     void makeUserAdminHandlesFailure() {
         when(userService.makeAdmin("a@b.com")).thenReturn(ServiceResult.failure("not found"));
-        stubDashboardData();
-        Model model = new ExtendedModelMap();
 
-        controller.makeUserAdmin("a@b.com", model);
+        ResponseEntity<?> response = controller.makeUserAdmin(new AdminController.MakeAdminRequest("a@b.com"));
 
-        assertThat(model.getAttribute("errorMessage")).isEqualTo("not found");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 }

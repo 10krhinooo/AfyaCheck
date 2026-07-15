@@ -45,6 +45,11 @@ public class User implements UserDetails {
     @Column(name = "provider_id")
     private String providerId;
 
+    // Keycloak JWT "sub" claim, for rows synced by KeycloakUserSyncFilter. Null for rows
+    // created before the Keycloak cutover (or via the legacy UserService.register() path).
+    @Column(name = "keycloak_id", unique = true)
+    private String keycloakId;
+
     @Column(name = "email_verified", nullable = false)
     private Boolean emailVerified = false;
 

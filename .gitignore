@@ -65,3 +65,6 @@ replay_pid*
 application-local.properties
 .env
 .env.local
+
+### Node (keycloak/scripts — frontend/ has its own .gitignore) ###
+node_modules/
