@@ -1,0 +1,26 @@
+{
+  "sections": [
+    {
+      "title": "Basics",
+      "questions": [
+        {
+          "id": 1,
+          "key": "q1",
+          "question": "Do you smoke?",
+          "description": "Smoking habits",
+          "type": "yes_no",
+          "options": ["yes", "no"],
+          "min": 0,
+          "max": 1
+        },
+        {
+          "id": 2,
+          "question": "Age?",
+          "type": "number",
+          "min": "18",
+          "max": "99"
+        }
+      ]
+    }
+  ]
+}

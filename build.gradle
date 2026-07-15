@@ -87,7 +87,15 @@ tasks.named('test') {
 }
 
 def coverageExclusions = [
-    'com/kimanga/afyacheck/AfyacheckApplication.class'
+    'com/kimanga/afyacheck/AfyacheckApplication.class',
+    // Pure getter/setter DTOs with zero behavior and no callers anywhere in
+    // src/main — dead code left over from an earlier iteration of the API
+    // (superseded by the DTOs the current controllers/services actually use).
+    'com/kimanga/afyacheck/DTO/SessionStartResponse.class',
+    'com/kimanga/afyacheck/DTO/QuestionProgress.class',
+    'com/kimanga/afyacheck/DTO/SessionState.class',
+    'com/kimanga/afyacheck/DTO/HealthCenterResponse.class',
+    'com/kimanga/afyacheck/DTO/LocationRequest.class'
 ]
 
 jacocoTestReport {
