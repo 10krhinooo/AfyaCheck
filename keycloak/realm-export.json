@@ -1,0 +1,85 @@
+{
+  "realm": "afyacheck",
+  "enabled": true,
+  "displayName": "AfyaCheck",
+  "loginTheme": "afyacheck",
+  "accountTheme": "afyacheck",
+  "emailTheme": "afyacheck",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "resetPasswordAllowed": true,
+  "verifyEmail": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "sslRequired": "external",
+  "roles": {
+    "realm": [
+      {
+        "name": "USER",
+        "description": "Regular AfyaCheck user"
+      },
+      {
+        "name": "ADMIN",
+        "description": "AfyaCheck staff — access to the admin console"
+      }
+    ]
+  },
+  "defaultRole": {
+    "name": "default-roles-afyacheck",
+    "composite": true,
+    "composites": {
+      "realm": ["USER"]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "afyacheck-spa",
+      "name": "AfyaCheck SPA",
+      "description": "Public client used by the React frontend (Authorization Code + PKCE, no client secret).",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/app/*",
+        "http://localhost:8080/app/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:8080"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/##http://localhost:8080/"
+      }
+    }
+  ],
+  "identityProviders": [
+    {
+      "alias": "google",
+      "providerId": "google",
+      "enabled": false,
+      "trustEmail": true,
+      "storeToken": false,
+      "config": {
+        "clientId": "${GOOGLE_OAUTH_CLIENT_ID}",
+        "clientSecret": "${GOOGLE_OAUTH_CLIENT_SECRET}",
+        "defaultScope": "openid profile email"
+      }
+    },
+    {
+      "alias": "github",
+      "providerId": "github",
+      "enabled": false,
+      "trustEmail": true,
+      "storeToken": false,
+      "config": {
+        "clientId": "${GITHUB_OAUTH_CLIENT_ID}",
+        "clientSecret": "${GITHUB_OAUTH_CLIENT_SECRET}"
+      }
+    }
+  ]
+}

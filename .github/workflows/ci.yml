@@ -38,10 +38,9 @@ jobs:
       DB_URL: jdbc:postgresql://localhost:5432/afyacheck
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
-      # CI-only dummy values — these properties have no default and are
+      # CI-only dummy value — spring.mail.password has no default and is
       # required for the app to start (see application.properties).
       MAIL_PASSWORD: ci-test-mail-password
-      REMEMBER_ME_KEY: ci-test-remember-me-key
 
     steps:
       - uses: actions/checkout@v4
@@ -98,3 +97,44 @@ jobs:
       - name: Sanity-check python-service entrypoint
         if: matrix.service == 'python-service'
         run: python -m py_compile python-service/decision_tree_service.py
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build (includes landing page prerender)
+        run: npm run build
+
+      - name: Check bundle budget
+        run: npm run budget:check
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist

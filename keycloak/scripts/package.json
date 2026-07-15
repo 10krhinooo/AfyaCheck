@@ -1,0 +1,13 @@
+{
+  "name": "afyacheck-keycloak-migration-scripts",
+  "private": true,
+  "type": "module",
+  "description": "One-time Keycloak user migration script (see migrate-users.mjs). Not part of the app build.",
+  "scripts": {
+    "migrate-users": "node migrate-users.mjs",
+    "migrate-users:dry-run": "node migrate-users.mjs --dry-run"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}

@@ -1,0 +1,22 @@
+# Local dev Keycloak instance for the AfyaCheck React migration (Phase 7). Not used in
+# production — a real deployment runs Keycloak against Postgres with proper secrets, not
+# `start-dev`'s embedded/ephemeral storage.
+#
+# Usage:
+#   docker compose up -d
+#   Keycloak admin console: http://localhost:8180  (admin / admin)
+#   Realm "afyacheck" and client "afyacheck-spa" are imported automatically from
+#   keycloak/realm-export.json. Frontend dev server (vite) already proxies /api/** to
+#   :8080 — the SPA talks to Keycloak directly on :8180 (see frontend/src/lib/auth/keycloak.ts).
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8080"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ./keycloak/themes/afyacheck:/opt/keycloak/themes/afyacheck:ro
