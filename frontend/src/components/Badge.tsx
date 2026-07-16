@@ -5,24 +5,9 @@ const tones = {
   neutral: 'bg-paper-dim text-ink-soft',
 } as const
 
-export function Badge({
-  tone = 'neutral',
-  icon,
-  children,
-}: {
-  tone?: keyof typeof tones
-  icon?: React.ReactNode
-  children: React.ReactNode
-}) {
+export function Badge({ tone = 'neutral', children }: { tone?: keyof typeof tones; children: React.ReactNode }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${tones[tone]}`}
-    >
-      {icon && (
-        <span aria-hidden="true" className="inline-flex">
-          {icon}
-        </span>
-      )}
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${tones[tone]}`}>
       {children}
     </span>
   )

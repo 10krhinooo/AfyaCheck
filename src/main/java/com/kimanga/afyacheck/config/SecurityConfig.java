@@ -62,7 +62,6 @@ public class SecurityConfig {
                                 "/app/**",
                                 "/assets/**",
                                 "/favicon.svg",
-                                "/index.html",
                                 // Anonymous risk-screening is a deliberate product requirement (this is a
                                 // public health-screening tool) — the questionnaire, its results, the
                                 // health-center finder, and the Maps key must not require login.

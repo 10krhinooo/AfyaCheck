@@ -1,18 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Badge } from '../../components/Badge'
-import { Button, LinkButton } from '../../components/Button'
+import { LinkButton } from '../../components/Button'
 import { Card } from '../../components/Card'
-import { Reveal } from '../../components/Reveal'
-import { Skeleton } from '../../components/Skeleton'
-import { StatusMessage } from '../../components/StatusMessage'
 import { apiFetch } from '../../lib/api-client'
 import type { LatestResultResponse, RiskAssessmentDto } from '../../lib/results-types'
 import { readStoredResult } from './resultStorage'
 
 const riskTone = { Low: 'low', Medium: 'moderate', High: 'high' } as const
-const NO_SESSION_ERROR = 'We couldn’t find an assessment to show. Retake the assessment to get your results.'
-const LOAD_ERROR = 'We couldn’t load your results. Check your connection and try again.'
 
 export default function ResultsPage() {
   const location = useLocation()
@@ -20,12 +15,11 @@ export default function ResultsPage() {
   const [assessment, setAssessment] = useState<RiskAssessmentDto | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!sessionId) {
       setLoading(false)
-      setError(NO_SESSION_ERROR)
+      setError('No assessment session found. Please retake the assessment.')
       return
     }
 
@@ -41,30 +35,21 @@ export default function ResultsPage() {
       return
     }
 
-    setLoading(true)
-    setError(null)
     apiFetch<LatestResultResponse>(`/api/results/latest?sessionId=${encodeURIComponent(sessionId)}`)
       .then((response) => {
         setAssessment(response.assessment)
         setLoading(false)
       })
-      .catch(() => {
-        setError(LOAD_ERROR)
+      .catch((err: Error) => {
+        setError(err.message)
         setLoading(false)
       })
-  }, [sessionId, attempt])
+  }, [sessionId])
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12" aria-busy="true">
-        <span className="sr-only">Loading your results…</span>
-        <Skeleton className="mx-auto h-8 w-32" />
-        <Skeleton className="mx-auto mt-4 h-16 w-40" />
-        <div className="mt-6 space-y-3">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-        </div>
+      <main className="mx-auto max-w-2xl px-6 py-16 text-center text-ink-soft" aria-busy="true">
+        Loading your results…
       </main>
     )
   }
@@ -72,32 +57,21 @@ export default function ResultsPage() {
   if (error || !assessment) {
     return (
       <main className="mx-auto max-w-xl px-6 py-16 text-center">
-        <div className="inline-flex text-left">
-          <StatusMessage tone="error">{error ?? NO_SESSION_ERROR}</StatusMessage>
-        </div>
-        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          {error === LOAD_ERROR && (
-            <Button variant="secondary" onClick={() => setAttempt((a) => a + 1)}>
-              Try again
-            </Button>
-          )}
-          <LinkButton href="/app/questionnaire" variant="primary">
-            Retake the assessment
-          </LinkButton>
-        </div>
+        <p className="text-coral-700">{error ?? 'We couldn’t find your results.'}</p>
+        <LinkButton href="/app/questionnaire" variant="primary" className="mt-6">
+          Retake the assessment
+        </LinkButton>
       </main>
     )
   }
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <Reveal>
-        <Card className="p-8 text-center sm:p-10">
-          <Badge tone={riskTone[assessment.riskLevel]}>{assessment.riskLevel} risk</Badge>
-          <p className="mt-5 font-display text-6xl text-ink">{assessment.riskScore}</p>
-          <p className="mt-1 text-sm text-ink-soft">out of 100</p>
-        </Card>
-      </Reveal>
+      <Card className="p-8 text-center">
+        <Badge tone={riskTone[assessment.riskLevel]}>{assessment.riskLevel} risk</Badge>
+        <p className="mt-4 font-display text-5xl text-ink">{assessment.riskScore}</p>
+        <p className="mt-1 text-sm text-ink-soft">out of 100</p>
+      </Card>
 
       <Card className="mt-6 p-8">
         <h2 className="text-lg text-ink">What this means for you</h2>

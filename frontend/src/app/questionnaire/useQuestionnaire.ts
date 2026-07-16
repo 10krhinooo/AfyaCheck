@@ -12,12 +12,6 @@ interface State {
   result: QuestionnaireEndResponse | null
 }
 
-// User-facing copy for each failure point, always paired with a concrete next step
-// (offered via the caller's retry/goBack action) rather than the raw fetch error text.
-const START_ERROR = 'We couldn’t load your assessment. Check your connection and try again.'
-const SUBMIT_ERROR = 'We couldn’t save your answer. Check your connection and try again.'
-const BACK_ERROR = 'We couldn’t go back to the previous question. Check your connection and try again.'
-
 export function useQuestionnaire() {
   const [state, setState] = useState<State>({
     sessionId: null,
@@ -28,11 +22,9 @@ export function useQuestionnaire() {
     error: null,
     result: null,
   })
-  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
-    setState((s) => ({ ...s, loading: true, error: null }))
     apiPost<QuestionnaireResponse>('/api/questionnaire/start', {})
       .then((response) => {
         if (cancelled) return
@@ -48,15 +40,13 @@ export function useQuestionnaire() {
           }))
         }
       })
-      .catch(() => {
-        if (!cancelled) setState((s) => ({ ...s, loading: false, error: START_ERROR }))
+      .catch((err: Error) => {
+        if (!cancelled) setState((s) => ({ ...s, loading: false, error: err.message }))
       })
     return () => {
       cancelled = true
     }
-  }, [attempt])
-
-  const retry = useCallback(() => setAttempt((a) => a + 1), [])
+  }, [])
 
   const submitAnswer = useCallback(
     async (key: string, value: string) => {
@@ -77,8 +67,8 @@ export function useQuestionnaire() {
             canGoBack: response.canGoBack,
           }))
         }
-      } catch {
-        setState((s) => ({ ...s, submitting: false, error: SUBMIT_ERROR }))
+      } catch (err) {
+        setState((s) => ({ ...s, submitting: false, error: (err as Error).message }))
       }
     },
     [state.sessionId],
@@ -99,10 +89,10 @@ export function useQuestionnaire() {
           canGoBack: response.canGoBack,
         }))
       }
-    } catch {
-      setState((s) => ({ ...s, submitting: false, error: BACK_ERROR }))
+    } catch (err) {
+      setState((s) => ({ ...s, submitting: false, error: (err as Error).message }))
     }
   }, [state.sessionId])
 
-  return { ...state, submitAnswer, goBack, retry }
+  return { ...state, submitAnswer, goBack }
 }

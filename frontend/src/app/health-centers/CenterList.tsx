@@ -1,4 +1,3 @@
-import { ExternalLink, MapPin, Phone } from 'lucide-react'
 import { Card } from '../../components/Card'
 import type { HealthCenter } from './types'
 
@@ -10,37 +9,14 @@ export function CenterList({ centers }: { centers: HealthCenter[] }) {
     <ol className="mt-6 space-y-3">
       {centers.map((center) => (
         <li key={center.id}>
-          <Card interactive className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <Card className="flex items-center justify-between gap-4 p-4">
             <div>
               <p className="font-medium text-ink">{center.name}</p>
-              <p className="mt-1 flex items-start gap-1.5 text-sm text-ink-soft">
-                <MapPin aria-hidden="true" size={14} className="mt-0.5 flex-shrink-0 text-teal-500" />
-                {center.address}
-              </p>
-              {center.phone && (
-                <a
-                  href={`tel:${center.phone}`}
-                  className="mt-1 flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700"
-                >
-                  <Phone aria-hidden="true" size={14} className="flex-shrink-0" />
-                  {center.phone}
-                </a>
-              )}
+              <p className="text-sm text-ink-soft">{center.address}</p>
             </div>
-            <div className="flex flex-shrink-0 items-center gap-4 sm:flex-col sm:items-end sm:gap-1">
-              {center.distanceKm !== undefined && (
-                <span className="whitespace-nowrap text-sm text-teal-600">{center.distanceKm} km</span>
-              )}
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${center.lat},${center.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 whitespace-nowrap text-sm font-medium text-teal-600 hover:text-teal-700"
-              >
-                Directions
-                <ExternalLink aria-hidden="true" size={14} />
-              </a>
-            </div>
+            {center.distanceKm !== undefined && (
+              <span className="whitespace-nowrap text-sm text-teal-600">{center.distanceKm} km</span>
+            )}
           </Card>
         </li>
       ))}

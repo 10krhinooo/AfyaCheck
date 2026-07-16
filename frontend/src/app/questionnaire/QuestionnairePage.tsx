@@ -3,15 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { ProgressBar } from '../../components/ProgressBar'
-import { Skeleton } from '../../components/Skeleton'
-import { StatusMessage } from '../../components/StatusMessage'
 import { storeQuestionnaireResult } from '../results/resultStorage'
 import { QuestionForm } from './QuestionForm'
 import { useQuestionnaire } from './useQuestionnaire'
 
 export default function QuestionnairePage() {
-  const { question, canGoBack, loading, submitting, error, result, submitAnswer, goBack, retry } =
-    useQuestionnaire()
+  const { question, canGoBack, loading, submitting, error, result, submitAnswer, goBack } = useQuestionnaire()
   const headingRef = useRef<HTMLHeadingElement>(null)
   const navigate = useNavigate()
 
@@ -31,29 +28,19 @@ export default function QuestionnairePage() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-xl px-6 py-12" aria-busy="true">
-        <span className="sr-only">Loading your assessment…</span>
-        <Skeleton className="h-2 w-full rounded-full" />
-        <Skeleton className="mt-8 h-64 w-full p-8" />
+      <main className="mx-auto max-w-xl px-6 py-16 text-center text-ink-soft" aria-busy="true">
+        Loading your assessment…
       </main>
     )
   }
 
-  // An error with no question loaded means the initial fetch failed: nothing to show
-  // behind it, so replace the page. An error that happens once a question is already on
-  // screen (answer submit, back navigation) is shown inline instead, so the user doesn't
-  // lose their place and can immediately retry from where they were.
-  if (error && !question) {
+  if (error) {
     return (
       <main className="mx-auto max-w-xl px-6 py-16 text-center">
-        <div className="inline-flex text-left">
-          <StatusMessage tone="error">{error}</StatusMessage>
-        </div>
-        <div>
-          <Button variant="secondary" className="mt-6" onClick={retry}>
-            Try again
-          </Button>
-        </div>
+        <p className="text-coral-700">{error}</p>
+        <Button variant="secondary" className="mt-6" onClick={() => window.location.reload()}>
+          Try again
+        </Button>
       </main>
     )
   }
@@ -72,7 +59,7 @@ export default function QuestionnairePage() {
         label={question.sectionTitle ?? 'Assessment progress'}
       />
 
-      <Card key={question.key} className="mt-8 animate-fade-in-up p-8 motion-reduce:animate-none">
+      <Card className="mt-8 p-8">
         <h1
           ref={headingRef}
           tabIndex={-1}
@@ -81,12 +68,6 @@ export default function QuestionnairePage() {
           {question.text}
         </h1>
         {question.description && <p className="mt-2 text-ink-soft">{question.description}</p>}
-
-        {error && (
-          <div className="mt-4">
-            <StatusMessage tone="error">{error}</StatusMessage>
-          </div>
-        )}
 
         <QuestionForm
           question={question}

@@ -15,22 +15,7 @@ import type { ChartData } from './types'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, ArcElement, Legend, Tooltip)
 
-// Chart.js can't read CSS custom properties, so these are hardcoded copies of the
-// brand tokens in index.css, matched to the Inter body font used everywhere else.
-ChartJS.defaults.font.family = "'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif"
-ChartJS.defaults.color = '#4a564f'
-
-const palette = [
-  '#2f7d6d',
-  '#7bb5aa',
-  '#e0982f',
-  '#c4523f',
-  '#256456',
-  '#93392a',
-  '#a8d1c8',
-  '#4f9686',
-  '#163a31',
-]
+const palette = ['#2f7d6d', '#7bb5aa', '#e0982f', '#c4523f', '#256456', '#93392a']
 
 // Canvas-rendered charts are invisible to screen readers by default (WCAG requirement for
 // this route) — every chart here ships a paired, always-in-the-DOM data table that a sighted

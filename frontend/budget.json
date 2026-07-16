@@ -1,11 +1,12 @@
 {
-  "_comment": "Per-route gzip JS budgets in KB. Matched by filename substring against dist/assets/*.js, using the FIRST key (in this file's order) whose substring appears in the filename — so 'Admin' must stay listed before 'DashboardPage', since chunk AdminDashboardPage.lazy-*.js would otherwise false-match the narrower 'DashboardPage' key meant for the unrelated /app/dashboard route. 'client' and 'app' are the shared runtime plus Landing/shell code; every /app/** route now ships its own chunk via route.lazy (see routes.tsx) and is budgeted individually below; 'Admin' covers all three admin routes, still grouped since they share the Chart.js weight; 'react' is the React vendor chunk.",
+  "_comment": "Per-route gzip JS budgets in KB, per the migration plan (floofy-honking-storm.md). Matched by filename substring against dist/assets/*.js. 'client'/'app' are vite-react-ssg's current chunk names for the shared runtime + all routes bundled together (no route-level code-splitting yet, added starting Phase 2) — once routes are React.lazy-split, replace these with the actual per-route chunk names.",
   "client": 90,
   "app": 60,
-  "react": 20,
-  "Admin": 180,
-  "QuestionnairePage": 20,
-  "ResultsPage": 15,
-  "HealthCentersPage": 25,
-  "DashboardPage": 15
+  "vendor": 90,
+  "index": 15,
+  "questionnaire": 60,
+  "results": 40,
+  "health-centers": 70,
+  "dashboard": 40,
+  "Admin": 180
 }

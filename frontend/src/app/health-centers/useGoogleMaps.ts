@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { apiFetch } from '../../lib/api-client'
 
 declare global {
@@ -12,13 +12,8 @@ type Status = 'loading' | 'ready' | 'error'
 // Lazily loads the Google Maps JS SDK (not part of the route's base bundle budget — see
 // budget.json) only once an API key is available. Callers must handle 'error' gracefully:
 // ad blockers, offline/3G timeouts, or a missing key are all expected on this route.
-export function useGoogleMaps(): { status: Status; retry: () => void } {
+export function useGoogleMaps(): Status {
   const [status, setStatus] = useState<Status>('loading')
-  const [attempt, setAttempt] = useState(0)
-  const retry = useCallback(() => {
-    setStatus('loading')
-    setAttempt((a) => a + 1)
-  }, [])
 
   useEffect(() => {
     if (window.google?.maps) {
@@ -50,7 +45,7 @@ export function useGoogleMaps(): { status: Status; retry: () => void } {
     return () => {
       cancelled = true
     }
-  }, [attempt])
+  }, [])
 
-  return { status, retry }
+  return status
 }
