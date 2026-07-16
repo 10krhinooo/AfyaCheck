@@ -18,10 +18,13 @@
 
   --color-teal-50: #eef6f4;
   --color-teal-100: #d3e9e4;
+  --color-teal-200: #a8d1c8;
   --color-teal-300: #7bb5aa;
+  --color-teal-400: #4f9686;
   --color-teal-500: #2f7d6d;
   --color-teal-600: #256456;
   --color-teal-700: #1c4c41;
+  --color-teal-800: #163a31;
   --color-teal-900: #102a24;
 
   --color-amber-100: #fbe8cf;
@@ -34,6 +37,23 @@
 
   --radius-card: 1.25rem;
   --shadow-card: 0 1px 2px rgba(16, 42, 36, 0.06), 0 8px 24px -12px rgba(16, 42, 36, 0.18);
+  --shadow-card-hover: 0 4px 8px rgba(16, 42, 36, 0.08), 0 16px 32px -12px rgba(16, 42, 36, 0.22);
+
+  /* One editorial easing curve, reused by every new motion effect (Reveal, question
+     transitions, hover/press) so it reads as one system rather than ad hoc curves. */
+  --ease-editorial: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-in-up: fade-in-up 0.6s var(--ease-editorial) both;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @layer base {
@@ -74,5 +94,11 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  /* Tighter tracking for oversized editorial display headlines, on top of the
+     base h1/h2/h3 rule above. */
+  .text-display-hero {
+    letter-spacing: -0.02em;
   }
 }

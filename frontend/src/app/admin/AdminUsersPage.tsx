@@ -2,29 +2,40 @@ import { useEffect, useState } from 'react'
 import { AdminNav } from './AdminNav'
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
+import { Card } from '../../components/Card'
+import { Skeleton } from '../../components/Skeleton'
+import { StatusMessage } from '../../components/StatusMessage'
 import { apiFetch, apiPost } from '../../lib/api-client'
 import type { UsersResponse } from './types'
+
+const LOAD_ERROR = 'We couldn’t load the user list. Check your connection and try again.'
+const TOGGLE_ERROR = 'We couldn’t update that user’s status. Check your connection and try again.'
 
 export default function AdminUsersPage() {
   const [data, setData] = useState<UsersResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
 
   function load() {
+    setError(null)
     apiFetch<UsersResponse>('/api/admin/users')
       .then(setData)
-      .catch((err: Error) => setError(err.message))
+      .catch(() => setError(LOAD_ERROR))
   }
 
   useEffect(load, [])
 
-  async function toggleStatus(userId: string) {
-    setPendingId(userId);
+  async function toggleStatus(userId: string, name: string, enabling: boolean) {
+    setPendingId(userId)
+    setError(null)
+    setSuccess(null)
     try {
       await apiPost('/api/admin/users/toggle-status', { userId: Number(userId) })
+      setSuccess(`${name} was ${enabling ? 'enabled' : 'disabled'}.`)
       load()
-    } catch (err) {
-      setError((err as Error).message)
+    } catch {
+      setError(TOGGLE_ERROR)
     } finally {
       setPendingId(null)
     }
@@ -32,10 +43,37 @@ export default function AdminUsersPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
-      <h1 className="text-2xl text-ink">User management</h1>
+      <h1 className="font-display text-2xl text-ink">User management</h1>
       <AdminNav />
 
-      {error && <p className="text-coral-700">{error}</p>}
+      {error && (
+        <div className="mt-4">
+          <StatusMessage
+            tone="error"
+            action={
+              <Button variant="secondary" onClick={load}>
+                Try again
+              </Button>
+            }
+          >
+            {error}
+          </StatusMessage>
+        </div>
+      )}
+      {success && (
+        <div className="mt-4">
+          <StatusMessage tone="success">{success}</StatusMessage>
+        </div>
+      )}
+
+      {!data && !error && (
+        <div aria-busy="true" className="mt-4 space-y-3">
+          <span className="sr-only">Loading…</span>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-12" />
+          ))}
+        </div>
+      )}
 
       {data && (
         <>
@@ -43,7 +81,7 @@ export default function AdminUsersPage() {
             {data.totalUsers} total users &middot; {data.adminUsersCount} admins
           </p>
 
-          <div className="mt-4 overflow-x-auto">
+          <div className="mt-4 hidden overflow-x-auto sm:block">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-teal-100 text-ink-soft">
@@ -68,8 +106,13 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.users.map((user) => (
-                  <tr key={user.id} className="border-b border-teal-50">
+                {data.users.map((user, i) => (
+                  <tr
+                    key={user.id}
+                    className={`border-b border-teal-50 transition-colors hover:bg-teal-50/60 ${
+                      i % 2 === 1 ? 'bg-paper-dim/40' : ''
+                    }`}
+                  >
                     <td className="py-2 text-ink">{user.name}</td>
                     <td className="py-2 text-ink-soft">{user.email}</td>
                     <td className="py-2 text-ink-soft">{user.role}</td>
@@ -83,7 +126,7 @@ export default function AdminUsersPage() {
                       <Button
                         variant="ghost"
                         disabled={pendingId === user.id}
-                        onClick={() => toggleStatus(user.id)}
+                        onClick={() => toggleStatus(user.id, user.name, !user.enabled)}
                       >
                         {user.enabled ? 'Disable' : 'Enable'}
                       </Button>
@@ -92,6 +135,29 @@ export default function AdminUsersPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="mt-4 space-y-3 sm:hidden">
+            {data.users.map((user) => (
+              <Card key={user.id} className="p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-ink">{user.name}</p>
+                  <Badge tone={user.enabled ? 'low' : 'neutral'}>{user.enabled ? 'Active' : 'Disabled'}</Badge>
+                </div>
+                <p className="mt-1 text-sm text-ink-soft">{user.email}</p>
+                <p className="mt-1 text-sm text-ink-soft">
+                  {user.role} &middot; {user.questionnaireCount} assessments
+                </p>
+                <Button
+                  variant="ghost"
+                  className="mt-2"
+                  disabled={pendingId === user.id}
+                  onClick={() => toggleStatus(user.id, user.name, !user.enabled)}
+                >
+                  {user.enabled ? 'Disable' : 'Enable'}
+                </Button>
+              </Card>
+            ))}
           </div>
         </>
       )}

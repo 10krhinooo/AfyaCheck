@@ -2,6 +2,7 @@ package com.kimanga.afyacheck.service;
 
 import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.DTO.admin.UserDTO;
+import com.kimanga.afyacheck.model.AdminAuditLog;
 import com.kimanga.afyacheck.model.Answer;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.model.User;
@@ -9,6 +10,9 @@ import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.repository.*;
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,6 +26,7 @@ public class AdminService {
     private final UserRepository userRepository;
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
+    private final AdminAuditLogRepository adminAuditLogRepository;
     // Remove sessionRepository dependency since we're not using it
 
     public DashboardStats getDashboardStats() {
@@ -239,6 +244,7 @@ public class AdminService {
 
             user.setEnabled(!user.getEnabled());
             userRepository.save(user);
+            logAction("TOGGLE_USER_STATUS", "USER", String.valueOf(userId), "enabled=" + user.getEnabled());
 
             String message = user.getEnabled() ? "User activated successfully" : "User deactivated successfully";
             return ServiceResult.success(message, null);
@@ -274,6 +280,7 @@ public class AdminService {
             }
 
             Question savedQuestion = questionRepository.save(question);
+            logAction("ADD_QUESTION", "QUESTION", String.valueOf(savedQuestion.getId()), savedQuestion.getQuestionKey());
             return ServiceResult.success("Question added successfully", savedQuestion);
         } catch (Exception e) {
             return ServiceResult.failure("Error adding question: " + e.getMessage());
@@ -289,6 +296,7 @@ public class AdminService {
 
             question.setIsActive(false);
             questionRepository.save(question);
+            logAction("DELETE_QUESTION", "QUESTION", String.valueOf(questionId), question.getQuestionKey());
             return ServiceResult.success("Question deleted successfully", null);
 
         } catch (Exception e) {
@@ -313,11 +321,33 @@ public class AdminService {
             question.setDisplayOrder(updatedQuestion.getDisplayOrder());
 
             Question savedQuestion = questionRepository.save(question);
+            logAction("UPDATE_QUESTION", "QUESTION", String.valueOf(questionId), null);
             return ServiceResult.success("Question updated successfully", savedQuestion);
 
         } catch (Exception e) {
             return ServiceResult.failure("Error updating question: " + e.getMessage());
         }
+    }
+
+    private void logAction(String action, String targetType, String targetId, String details) {
+        AdminAuditLog log = new AdminAuditLog();
+        log.setActorEmail(currentActorEmail());
+        log.setAction(action);
+        log.setTargetType(targetType);
+        log.setTargetId(targetId);
+        log.setDetails(details);
+        adminAuditLogRepository.save(log);
+    }
+
+    private String currentActorEmail() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            String email = jwtAuth.getToken().getClaimAsString("email");
+            if (email != null) {
+                return email;
+            }
+        }
+        return "unknown";
     }
 
     // Answer Statistics - Simplified without any session dependencies

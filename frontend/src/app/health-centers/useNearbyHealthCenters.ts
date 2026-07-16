@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { HealthCenter } from './types'
 
 type SearchStatus = 'idle' | 'locating' | 'searching' | 'done' | 'error'
@@ -18,6 +18,12 @@ export function useNearbyHealthCenters(mapsReady: boolean) {
   const [centers, setCenters] = useState<HealthCenter[]>([])
   const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+
+  const retry = useCallback(() => {
+    setError(null)
+    setAttempt((a) => a + 1)
+  }, [])
 
   useEffect(() => {
     if (!mapsReady) return
@@ -33,8 +39,13 @@ export function useNearbyHealthCenters(mapsReady: boolean) {
         service.nearbySearch(
           { location: here, radius: 10000, type: 'hospital' },
           (results, placesStatus) => {
+            if (placesStatus === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+              setCenters([])
+              setStatus('done')
+              return
+            }
             if (placesStatus !== google.maps.places.PlacesServiceStatus.OK || !results) {
-              setError('No health centers found nearby.')
+              setError('We couldn’t search for nearby health centers right now. Check your connection and try again.')
               setStatus('error')
               return
             }
@@ -60,11 +71,13 @@ export function useNearbyHealthCenters(mapsReady: boolean) {
         )
       },
       () => {
-        setError('Location access was denied, so we can’t show nearby centers.')
+        setError(
+          'Location access was denied, so we can’t show nearby centers. Enable location access for this site in your browser settings, then try again.',
+        )
         setStatus('error')
       },
     )
-  }, [mapsReady])
+  }, [mapsReady, attempt])
 
-  return { status, centers, origin, error }
+  return { status, centers, origin, error, retry }
 }
