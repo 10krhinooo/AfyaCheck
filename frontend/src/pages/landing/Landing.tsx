@@ -9,12 +9,12 @@ const steps = [
   {
     icon: ClipboardList,
     title: 'Answer a few private questions',
-    body: 'An adaptive questionnaire where each question is chosen based on what you’ve already told us, so it only takes a few minutes.',
+    body: 'An adaptive questionnaire — each question is chosen based on what you’ve already told us, so it only takes a few minutes.',
   },
   {
     icon: ShieldCheck,
     title: 'Get a clear risk assessment',
-    body: 'A model trained on clinical risk factors gives you a plain-language result, not a diagnosis, with next steps either way.',
+    body: 'A model trained on clinical risk factors gives you a plain-language result, not a diagnosis — with next steps either way.',
   },
   {
     icon: MapPin,
