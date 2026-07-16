@@ -26,7 +26,7 @@ const steps = [
 export default function Landing() {
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
+      <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
         <span className="font-display text-xl text-teal-700">AfyaCheck</span>
         <button
           type="button"
@@ -38,7 +38,7 @@ export default function Landing() {
       </header>
 
       <main>
-        <Reveal className="mx-auto max-w-5xl px-6 pb-20 pt-10">
+        <Reveal className="mx-auto max-w-7xl px-6 pb-20 pt-10">
           <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:items-center lg:gap-12">
             <div>
               <Badge tone="low">Free &middot; Confidential &middot; No account required to start</Badge>
@@ -71,7 +71,7 @@ export default function Landing() {
           </div>
         </Reveal>
 
-        <section className="mx-auto max-w-4xl px-6 pb-24 pt-8">
+        <section className="mx-auto max-w-6xl px-6 pb-24 pt-8">
           <div className="space-y-10">
             {steps.map((step, i) => {
               const Icon = step.icon
