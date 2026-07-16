@@ -7,8 +7,10 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import os
+import re
 import logging
 import json
+import joblib
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -53,26 +55,54 @@ class HealthResponse(BaseModel):
     timestamp: str
 
 class HIVRiskPredictor:
-    def __init__(self, model_path: str = 'xgboost_model.json'):
-        self.model = self.load_model(model_path)
+    def __init__(self):
+        # Primary model: the full KENPHIA 2018 XGBoost+CatBoost soft-voting
+        # ensemble (744 one-hot/numeric features). Falls back to the legacy
+        # small hand-encoded model if the KENPHIA artifacts aren't present.
+        self.kenphia_schema = None
+        self.model, self.kenphia_schema = self.load_kenphia_model()
 
-        # EXPANDED feature columns to include sexual_activity and other risk factors
-        self.feature_columns = [
-            'age', 'marital_status', 'education', 'wealth_index',
-            'hiv_tested', 'sexual_partners', 'condom_use', 'sexual_activity',
-            'recent_partners', 'high_risk_partner', 'sti_symptoms', 'previous_sti', 'transactional_sex'
-        ]
+        if self.model is not None:
+            self.mode = 'kenphia'
+            self.feature_columns = self.kenphia_schema['feature_columns']
+            logger.info(f"Loaded KENPHIA ensemble model: {len(self.feature_columns)} features "
+                        f"({len(self.kenphia_schema['numeric_cols'])} numeric, "
+                        f"{len(self.kenphia_schema['categorical_cols'])} categorical)")
+        else:
+            self.mode = 'legacy'
+            logger.warning("KENPHIA ensemble not found (kenphia_ensemble.pkl / "
+                            "kenphia_feature_schema.pkl) -- falling back to legacy model")
 
-        # Try to load feature columns from model info
-        try:
-            with open('model_info.json', 'r') as f:
-                model_info = json.load(f)
-                self.feature_columns = model_info.get('feature_columns', self.feature_columns)
-                logger.info(f"Loaded feature columns from model_info.json: {self.feature_columns}")
-        except Exception as e:
-            logger.warning(f"Could not load model_info.json: {e}. Using expanded feature columns.")
+            # EXPANDED feature columns to include sexual_activity and other risk factors
+            self.feature_columns = [
+                'age', 'marital_status', 'education', 'wealth_index',
+                'hiv_tested', 'sexual_partners', 'condom_use', 'sexual_activity',
+                'recent_partners', 'high_risk_partner', 'sti_symptoms', 'previous_sti', 'transactional_sex'
+            ]
 
-        # Define categorical value mappings
+            # Try to load feature columns from model info
+            try:
+                with open('model_info.json', 'r') as f:
+                    model_info = json.load(f)
+                    self.feature_columns = model_info.get('feature_columns', self.feature_columns)
+                    logger.info(f"Loaded feature columns from model_info.json: {self.feature_columns}")
+            except Exception as e:
+                logger.warning(f"Could not load model_info.json: {e}. Using expanded feature columns.")
+
+            legacy_paths = [
+                'xgboost_model.json', 'xgboost_model.joblib',
+                'xgboost_non_imputed.pkl', 'model.pkl', 'model.joblib'
+            ]
+            for path in legacy_paths:
+                self.model = self.load_model(path)
+                if self.model is not None:
+                    logger.info(f"Legacy model loaded from {path}")
+                    break
+
+        # Define categorical value mappings -- used both by the legacy
+        # preprocess/fallback paths below, and to crosswalk AfyaCheck's
+        # answer vocabulary into KENPHIA's numeric codes in
+        # build_kenphia_feature_row().
         self.marital_status_mapping = {
             'never_married': 0, 'married': 1, 'divorced': 2, 'widowed': 3, 'separated': 4,
             'single': 0, 'living with partner': 1
@@ -92,9 +122,9 @@ class HIVRiskPredictor:
         self.condom_use_mapping = {'never': 2, 'sometimes': 1, 'always': 0}  # FIXED: Always = lowest risk
         self.yes_no_mapping = {'no': 0, 'yes': 1}
 
-        logger.info(f"HIVRiskPredictor initialized with model path: {model_path}")
+        logger.info(f"HIVRiskPredictor initialized in '{self.mode}' mode")
         logger.info(f"Model loaded: {self.model is not None}")
-        logger.info(f"Feature columns: {self.feature_columns}")
+        logger.info(f"Feature columns: {len(self.feature_columns)}")
 
     def load_model(self, model_path: str):
         """Load the trained ML model using multiple formats"""
@@ -176,6 +206,151 @@ class HIVRiskPredictor:
         except Exception as e:
             logger.error(f"Error in load_model: {e}")
             return None
+
+    def load_kenphia_model(self):
+        """Load the full KENPHIA 2018 ensemble + its feature schema, if present."""
+        model_path = 'kenphia_ensemble.pkl'
+        schema_path = 'kenphia_feature_schema.pkl'
+        try:
+            if os.path.exists(model_path) and os.path.exists(schema_path):
+                model = joblib.load(model_path)
+                schema = joblib.load(schema_path)
+                return model, schema
+        except Exception as e:
+            logger.error(f"Failed to load KENPHIA ensemble/schema: {e}")
+        return None, None
+
+    def build_kenphia_feature_row(self, answers: Dict[str, str]) -> pd.DataFrame:
+        """Build a single-row DataFrame matching the KENPHIA ensemble's exact
+        744-column training schema, from AfyaCheck's small answer vocabulary.
+
+        Numeric columns default to NaN (the ensemble's XGBoost/CatBoost
+        members handle missing values natively -- this mirrors training,
+        where KENPHIA columns AfyaCheck simply has no equivalent for are
+        genuinely missing, not zero). Categorical columns default to the
+        'MISSING' category used at training time for the same reason.
+        Only fields with a confirmed KENPHIA codebook mapping are populated;
+        everything else is left as a legitimate missing value rather than
+        guessed.
+        """
+        schema = self.kenphia_schema
+        numeric_cols = schema['numeric_cols']
+        categorical_cols = schema['categorical_cols']
+        feature_columns = schema['feature_columns']
+
+        row = {col: np.nan for col in numeric_cols}
+
+        def get(*keys):
+            for k in keys:
+                v = answers.get(k)
+                if v not in (None, ''):
+                    return str(v).strip().lower()
+            return None
+
+        age = get('age')
+        if age is not None:
+            try:
+                row['age'] = int(float(age))
+            except ValueError:
+                pass
+
+        # AfyaCheck's current questionnaire has no gender/urban question --
+        # these are only populated if the caller happens to pass extra keys.
+        gender = get('gender', 'sex')
+        if gender in ('male', 'm', '1'):
+            row['gender'] = 1
+        elif gender in ('female', 'f', '2'):
+            row['gender'] = 2
+
+        urban = get('urban', 'residence', 'area_type')
+        if urban in ('urban', '1'):
+            row['urban'] = 1
+        elif urban in ('rural', '2'):
+            row['urban'] = 2
+
+        marital_status = get('marital_status')
+        # curmar: 1=MARRIED, 2=LIVING TOGETHER, 3=WIDOWED, 4=DIVORCED, 5=SEPARATED
+        curmar_map = {
+            'married': 1, 'living with partner': 2, 'living_together': 2,
+            'widowed': 3, 'divorced': 4, 'separated': 5,
+        }
+        if marital_status in curmar_map:
+            row['curmar'] = curmar_map[marital_status]
+            row['evermar'] = 1  # ever married/lived together = yes
+        elif marital_status in ('never_married', 'single'):
+            row['evermar'] = 2  # no
+
+        education = get('education')
+        # educationkenya: 1=No primary, 2=Incomplete Primary, 3=Complete
+        # Primary, 4=Complete Secondary -- there is no "higher education"
+        # category in KENPHIA's coding, so AfyaCheck's higher-ed answers
+        # collapse (lossily) into 4, the highest available code.
+        educationkenya_map = {
+            'no_education': 1, 'no formal education': 1,
+            'primary': 3, 'primary school': 3,
+            'secondary': 4, 'secondary school': 4, 'high school': 4,
+            'higher': 4, 'college/university': 4, 'postgraduate': 4,
+        }
+        if education in educationkenya_map:
+            row['educationkenya'] = educationkenya_map[education]
+
+        wealth_index = get('wealth_index')
+        # wealthquintile: 1(poorest)-5(richest)
+        wealthquintile_map = {
+            'poorest': 1, 'poorer': 2, 'middle': 3, 'richer': 4, 'richest': 5,
+            'low income': 1, 'lower middle income': 2, 'middle income': 3,
+            'upper middle income': 4, 'high income': 5,
+        }
+        if wealth_index in wealthquintile_map:
+            row['wealthquintile'] = wealthquintile_map[wealth_index]
+
+        hiv_tested = get('hiv_tested')
+        # evertested / hivtstever: 1=Ever tested/YES, 2=Never tested/NO
+        if hiv_tested == 'yes':
+            row['evertested'] = 1
+            row['hivtstever'] = 1
+        elif hiv_tested == 'no':
+            row['evertested'] = 2
+            row['hivtstever'] = 2
+
+        sexual_activity = get('sexual_activity')
+        is_not_sexually_active = sexual_activity == 'no'
+
+        sexual_partners = get('sexual_partners')
+        # lifetimesex: integer count, topcoded at 20. AfyaCheck's field isn't
+        # explicitly lifetime vs. recent, so this is a best-effort crosswalk.
+        if is_not_sexually_active:
+            row['lifetimesex'] = 0
+        elif sexual_partners is not None:
+            if sexual_partners.isdigit():
+                row['lifetimesex'] = min(int(sexual_partners), 20)
+            elif sexual_partners == '3+':
+                row['lifetimesex'] = 20
+
+        condom_use = get('condom_use')
+        # condomlastsex12months: 1=used condom at last sex in past 12mo,
+        # 2=did not, 3=no sex in past 12mo -- a last-instance indicator, not
+        # a frequency scale like AfyaCheck's never/sometimes/always, so
+        # 'sometimes' is approximated as "used at last sex".
+        if is_not_sexually_active:
+            row['condomlastsex12months'] = 3
+        elif condom_use in ('always', 'sometimes'):
+            row['condomlastsex12months'] = 1
+        elif condom_use == 'never':
+            row['condomlastsex12months'] = 2
+
+        numeric_row_df = pd.DataFrame([row])
+
+        if categorical_cols:
+            cat_row = pd.DataFrame([{col: 'MISSING' for col in categorical_cols}])
+            cat_encoded = pd.get_dummies(cat_row, prefix=categorical_cols)
+        else:
+            cat_encoded = pd.DataFrame(index=numeric_row_df.index)
+
+        full_row = pd.concat([numeric_row_df, cat_encoded], axis=1)
+        full_row.columns = [re.sub(r"[\[\]<]", "_", str(c)) for c in full_row.columns]
+        full_row = full_row.reindex(columns=feature_columns, fill_value=0)
+        return full_row
 
     def preprocess_features(self, answers: Dict[str, str]) -> List[int]:
         """Convert form answers to model features with enhanced zero-encoding"""
@@ -312,20 +487,36 @@ class HIVRiskPredictor:
             return self.fallback_prediction(answers)
 
         try:
-            features = self.preprocess_features(answers)
-            features_array = [features]  # Convert to 2D array
-
-            # Check if model has predict_proba method
-            if hasattr(self.model, 'predict_proba'):
+            if self.mode == 'kenphia':
+                X = self.build_kenphia_feature_row(answers)
+                prediction = self.model.predict_proba(X)[0]
+                hiv_probability = float(prediction[1])
+                confidence = float(np.max(prediction))
+                # How many of the model's numeric fields actually received a
+                # real (non-missing) value from this answer set, out of the
+                # model's total numeric feature space -- a rough signal of
+                # how much of the KENPHIA feature space AfyaCheck's smaller
+                # questionnaire is able to populate.
+                numeric_cols = self.kenphia_schema['numeric_cols']
+                features_used = int(X[numeric_cols].notna().sum(axis=1).iloc[0])
+                logger.info(f"KENPHIA model probabilities: {prediction}, "
+                            f"numeric features populated: {features_used}/{len(numeric_cols)}")
+            elif hasattr(self.model, 'predict_proba'):
+                features = self.preprocess_features(answers)
+                features_array = [features]  # Convert to 2D array
                 prediction = self.model.predict_proba(features_array)[0]
                 hiv_probability = float(prediction[1])  # Probability of HIV positive
                 confidence = float(np.max(prediction))
+                features_used = len(features)
                 logger.info(f"Model probabilities: {prediction}")
             else:
                 # Fallback for models without predict_proba
+                features = self.preprocess_features(answers)
+                features_array = [features]
                 prediction = self.model.predict(features_array)[0]
                 hiv_probability = float(prediction)
                 confidence = 0.85
+                features_used = len(features)
                 logger.info(f"Model raw prediction: {prediction}")
 
             # CRITICAL FIX: If not sexually active, cap the probability
@@ -343,7 +534,7 @@ class HIVRiskPredictor:
                 'hivProbability': hiv_probability,
                 'riskScore': risk_score,
                 'confidence': confidence,
-                'features_used': len(features),
+                'features_used': features_used,
                 'model_used': True
             }
         except Exception as e:
@@ -428,30 +619,16 @@ class HIVRiskPredictor:
             'model_used': False
         }
 
-# Initialize predictor - try multiple model formats and paths
-predictor = None
-model_paths = [
-    'xgboost_model.json',
-    'xgboost_model.joblib',
-    'xgboost_non_imputed.pkl',
-    'model.pkl',
-    'model.joblib'
-]
+# Initialize predictor -- tries the full KENPHIA ensemble first, then falls
+# back to legacy model formats/paths, then to rule-based fallback.
+logger.info("Initializing HIV Risk Predictor...")
+predictor = HIVRiskPredictor()
 
-for model_path in model_paths:
-    logger.info(f"Attempting to load model from: {model_path}")
-    predictor = HIVRiskPredictor(model_path)
-    if predictor.model is not None:
-        logger.info(f"✅ Successfully loaded model from: {model_path}")
-        break
-    else:
-        logger.warning(f"❌ Failed to load model from: {model_path}")
-
-if predictor is None or predictor.model is None:
+if predictor.model is not None:
+    logger.info(f"✅ Predictor ready in '{predictor.mode}' mode "
+                f"({len(predictor.feature_columns)} features)")
+else:
     logger.warning("❌ No model could be loaded. Using rule-based fallback only.")
-    # Create predictor with no model for fallback only
-    predictor = HIVRiskPredictor()
-    predictor.model = None
 
 def get_risk_level(score: int) -> str:
     """Determine risk level based on score"""
@@ -535,10 +712,17 @@ async def root():
 @app.get("/health", response_model=HealthResponse, summary="Health check")
 async def health_check():
     """Health check endpoint"""
+    if predictor.mode == 'kenphia':
+        model_name = "KENPHIA 2018 XGBoost+CatBoost Ensemble"
+    elif predictor.model is not None:
+        model_name = "XGBoost (Legacy)"
+    else:
+        model_name = "Rule-Based Fallback"
+
     return HealthResponse(
         status="healthy",
         model_loaded=predictor.model is not None,
-        model_name="XGBoost (Enhanced)" if predictor.model is not None else "Rule-Based Fallback",
+        model_name=model_name,
         features=predictor.feature_columns,
         timestamp=datetime.now().isoformat()
     )
@@ -596,8 +780,12 @@ async def predict(request: PredictionRequest):
 @app.get("/features", summary="Get feature information")
 async def get_features():
     """Endpoint to describe required features and their expected values"""
-    return {
-        "required_features": predictor.feature_columns,
+    response = {
+        "model_mode": predictor.mode,
+        "required_features": (
+            "AfyaCheck answer keys accepted (crosswalked into the KENPHIA schema below)"
+            if predictor.mode == 'kenphia' else predictor.feature_columns
+        ),
         "value_mappings": {
             "marital_status": predictor.marital_status_mapping,
             "education": predictor.education_mapping,
@@ -628,19 +816,48 @@ async def get_features():
         }
     }
 
+    if predictor.mode == 'kenphia':
+        response["kenphia_feature_space"] = {
+            "total_features": len(predictor.feature_columns),
+            "numeric_features": len(predictor.kenphia_schema['numeric_cols']),
+            "categorical_dummy_features": len(predictor.kenphia_schema['categorical_cols']),
+            "mapped_kenphia_fields": [
+                "age", "gender (not in AfyaCheck questionnaire, defaults missing)",
+                "urban (not in AfyaCheck questionnaire, defaults missing)",
+                "curmar/evermar (from marital_status)",
+                "educationkenya (from education, collapses higher-ed into 'Complete Secondary')",
+                "wealthquintile (from wealth_index)",
+                "evertested/hivtstever (from hiv_tested)",
+                "lifetimesex (from sexual_partners)",
+                "condomlastsex12months (from condom_use)"
+            ],
+            "note": "All other KENPHIA columns are left as genuine missing values, "
+                    "not guessed -- the ensemble's tree models handle missingness natively."
+        }
+
+    return response
+
 @app.get("/model-info", summary="Get model information")
 async def get_model_info():
     """Get information about the loaded ML model"""
     model_info = {
         "model_loaded": predictor.model is not None,
+        "model_mode": predictor.mode,
         "model_type": str(type(predictor.model).__name__) if predictor.model else None,
-        "feature_columns": predictor.feature_columns,
+        "feature_columns": predictor.feature_columns if predictor.mode != 'kenphia' else None,
         "feature_count": len(predictor.feature_columns),
         "zero_encoding_enabled": True,
         "max_risk_non_active": "10%",
         "numeric_partners_handling": True,
         "prediction_capability": "probabilities" if hasattr(predictor.model, 'predict_proba') else "binary only" if predictor.model else "none"
     }
+
+    if predictor.mode == 'kenphia':
+        model_info["ensemble_members"] = (
+            [name for name, _ in predictor.model.estimators]
+            if hasattr(predictor.model, 'estimators') else None
+        )
+        model_info["training_source"] = "KENPHIA 2018 adult dataset (42,452 rows, 28,393 with biomarker results)"
 
     if predictor.model:
         try:

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # --- Configuration & Path Management ---
 
 MODEL_DIR = os.getenv("MODEL_DIRECTORY", "decision_tree_model")
-MODEL_FILENAME = os.getenv("MODEL_FILENAME", "cpu_optimized_sti_question_tree_model_100k.joblib")
+MODEL_FILENAME = os.getenv("MODEL_FILENAME", "kenphia_grounded_question_tree_model.joblib")
 
 def get_model_path() -> Path:
     """Constructs the absolute path to the model file."""
