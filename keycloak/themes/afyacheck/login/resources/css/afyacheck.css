@@ -66,9 +66,21 @@ body {
 .pf-v5-c-login__main {
   background: #ffffff !important;
   border: none !important;
-  border-radius: 1.5rem !important;
+  border-radius: 1.25rem !important;
   box-shadow: 0 1px 2px rgba(16, 42, 36, 0.06), 0 8px 24px -12px rgba(16, 42, 36, 0.18) !important;
-  padding: 2.5rem !important;
+  padding: 1.5rem 1.25rem !important;
+}
+
+/* 2.5rem of horizontal card padding (desktop) eats ~20% of a 375px phone's width — scale it
+   down below 992px, restoring today's desktop value unchanged at that breakpoint. */
+@media (min-width: 480px) {
+  .pf-v5-c-login__main { padding: 1.75rem 1.5rem !important; }
+}
+@media (min-width: 640px) {
+  .pf-v5-c-login__main { padding: 2rem 1.75rem !important; }
+}
+@media (min-width: 992px) {
+  .pf-v5-c-login__main { border-radius: 1.5rem !important; padding: 2.5rem !important; }
 }
 
 .pf-v5-c-login__main-header {
@@ -86,7 +98,13 @@ body {
 }
 
 .pf-v5-c-title.pf-m-3xl {
-  font-size: 1.75rem !important;
+  font-size: 1.375rem !important;
+}
+@media (min-width: 480px) {
+  .pf-v5-c-title.pf-m-3xl { font-size: 1.5rem !important; }
+}
+@media (min-width: 992px) {
+  .pf-v5-c-title.pf-m-3xl { font-size: 1.75rem !important; }
 }
 
 .pf-v5-c-form__label-text {

@@ -63,6 +63,19 @@ public class SecurityConfig {
                                 "/assets/**",
                                 "/favicon.svg",
                                 "/index.html",
+                                // Prerendered marketing/legal pages (see WebConfig) — public by nature,
+                                // same as "/" above. Both the clean path and its forward:/*.html target
+                                // are needed: Spring Security re-evaluates on the internal FORWARD
+                                // dispatch too, so only permitting the clean path 401s on the forward
+                                // (same reason "/index.html" is listed separately from "/app/**").
+                                "/about",
+                                "/about.html",
+                                "/faq",
+                                "/faq.html",
+                                "/privacy",
+                                "/privacy.html",
+                                "/terms",
+                                "/terms.html",
                                 // Anonymous risk-screening is a deliberate product requirement (this is a
                                 // public health-screening tool) — the questionnaire, its results, the
                                 // health-center finder, and the Maps key must not require login.
