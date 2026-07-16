@@ -3,16 +3,24 @@ package com.kimanga.afyacheck.service;
 import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.DTO.admin.UserDTO;
 import com.kimanga.afyacheck.DTO.ServiceResult;
+import com.kimanga.afyacheck.model.AdminAuditLog;
 import com.kimanga.afyacheck.model.Answer;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.model.UserRole;
+import com.kimanga.afyacheck.repository.AdminAuditLogRepository;
 import com.kimanga.afyacheck.repository.AnswerRepository;
 import com.kimanga.afyacheck.repository.QuestionRepository;
 import com.kimanga.afyacheck.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
@@ -28,6 +36,7 @@ class AdminServiceTest {
     private UserRepository userRepository;
     private QuestionRepository questionRepository;
     private AnswerRepository answerRepository;
+    private AdminAuditLogRepository adminAuditLogRepository;
     private AdminService adminService;
 
     @BeforeEach
@@ -35,7 +44,23 @@ class AdminServiceTest {
         userRepository = mock(UserRepository.class);
         questionRepository = mock(QuestionRepository.class);
         answerRepository = mock(AnswerRepository.class);
-        adminService = new AdminService(userRepository, questionRepository, answerRepository);
+        adminAuditLogRepository = mock(AdminAuditLogRepository.class);
+        adminService = new AdminService(userRepository, questionRepository, answerRepository, adminAuditLogRepository);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAs(String email) {
+        Jwt jwt = Jwt.withTokenValue("token")
+                .header("alg", "none")
+                .claim("email", email)
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(60))
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
     }
 
     @Test
@@ -224,6 +249,7 @@ class AdminServiceTest {
 
     @Test
     void toggleUserStatusTogglesEnabledFlag() {
+        authenticateAs("admin@example.com");
         User user = sampleUser();
         user.setEnabled(true);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
@@ -232,6 +258,11 @@ class AdminServiceTest {
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(user.getEnabled()).isFalse();
+
+        ArgumentCaptor<AdminAuditLog> captor = ArgumentCaptor.forClass(AdminAuditLog.class);
+        verify(adminAuditLogRepository).save(captor.capture());
+        assertThat(captor.getValue().getActorEmail()).isEqualTo("admin@example.com");
+        assertThat(captor.getValue().getAction()).isEqualTo("TOGGLE_USER_STATUS");
     }
 
     @Test
@@ -258,6 +289,7 @@ class AdminServiceTest {
         assertThat(result.isSuccess()).isTrue();
         assertThat(question.getIsActive()).isTrue();
         assertThat(question.getDisplayOrder()).isEqualTo(1);
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
     }
 
     @Test
@@ -297,6 +329,7 @@ class AdminServiceTest {
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(question.getIsActive()).isFalse();
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
     }
 
     @Test
@@ -320,6 +353,7 @@ class AdminServiceTest {
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(existing.getQuestionText()).isEqualTo("New text");
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
     }
 
     @Test

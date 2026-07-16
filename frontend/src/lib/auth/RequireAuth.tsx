@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { LinkButton } from '../../components/Button'
+import { StatusMessage } from '../../components/StatusMessage'
 import { useAuth } from './AuthContext'
 import { login } from './keycloak'
 
@@ -26,7 +28,16 @@ export function RequireAuth({ children, adminOnly = false }: { children: ReactNo
   if (adminOnly && !isAdmin) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-16 text-center">
-        <p className="text-coral-700">You don't have access to this page.</p>
+        <div className="inline-flex text-left">
+          <StatusMessage tone="error">
+            You don’t have access to this page. It’s restricted to administrators.
+          </StatusMessage>
+        </div>
+        <div>
+          <LinkButton href="/app/dashboard" variant="secondary" className="mt-6">
+            Back to dashboard
+          </LinkButton>
+        </div>
       </main>
     )
   }
