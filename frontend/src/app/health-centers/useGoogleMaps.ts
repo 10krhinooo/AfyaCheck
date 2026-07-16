@@ -4,6 +4,7 @@ import { apiFetch } from '../../lib/api-client'
 declare global {
   interface Window {
     google?: typeof google
+    gm_authFailure?: () => void
   }
 }
 
@@ -31,6 +32,13 @@ export function useGoogleMaps(): { status: Status; retry: () => void } {
     apiFetch<{ apiKey: string }>('/api/config/maps-key')
       .then(({ apiKey }) => {
         if (cancelled || !apiKey) throw new Error('Maps API key unavailable')
+
+        // Google calls this global if the key loads but fails authorization (bad key, missing
+        // HTTP-referrer allowlist entry, Maps JS API not enabled on the project) — a failure
+        // mode script.onload/onerror can't see, since the script itself loads successfully.
+        window.gm_authFailure = () => {
+          if (!cancelled) setStatus('error')
+        }
 
         const script = document.createElement('script')
         script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places`

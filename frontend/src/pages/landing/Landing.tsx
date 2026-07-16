@@ -1,9 +1,9 @@
 import { ClipboardList, MapPin, ShieldCheck } from 'lucide-react'
 import { Badge } from '../../components/Badge'
+import { BrandMotif } from '../../components/BrandMotif'
 import { LinkButton } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Reveal } from '../../components/Reveal'
-import { login } from '../../lib/auth/keycloak'
 
 const steps = [
   {
@@ -26,17 +26,6 @@ const steps = [
 export default function Landing() {
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-        <span className="font-display text-xl text-teal-700">AfyaCheck</span>
-        <button
-          type="button"
-          onClick={() => login('/app/dashboard')}
-          className="text-sm font-medium text-ink-soft hover:text-ink"
-        >
-          Sign in
-        </button>
-      </header>
-
       <main>
         <Reveal className="mx-auto max-w-7xl px-6 pb-20 pt-10">
           <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:items-center lg:gap-12">
@@ -59,15 +48,18 @@ export default function Landing() {
               </div>
             </div>
 
-            <Card className="mt-12 hidden p-8 lg:mt-0 lg:block">
-              <p className="font-display text-4xl leading-tight text-teal-700">
-                A calm, private space, not a clinical scan.
-              </p>
-              <p className="mt-4 text-sm text-ink-soft">
-                Built for the way people actually make decisions about their health: privately,
-                on their own time, with a clear next step either way.
-              </p>
-            </Card>
+            <div className="mt-12 lg:mt-0">
+              <BrandMotif size="lg" className="mb-6" />
+              <Card className="p-8">
+                <p className="font-display text-3xl leading-tight text-teal-700 sm:text-4xl">
+                  A calm, private space, not a clinical scan.
+                </p>
+                <p className="mt-4 text-sm text-ink-soft">
+                  Built for the way people actually make decisions about their health: privately,
+                  on their own time, with a clear next step either way.
+                </p>
+              </Card>
+            </div>
           </div>
         </Reveal>
 
@@ -98,10 +90,6 @@ export default function Landing() {
           </div>
         </section>
       </main>
-
-      <footer className="border-t border-teal-100 py-8 text-center text-sm text-ink-soft">
-        Your answers are confidential and used only to generate your assessment.
-      </footer>
     </div>
   )
 }

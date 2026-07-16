@@ -36,8 +36,9 @@ them: `DB_PASSWORD`, `MAIL_PASSWORD`, `REMEMBER_ME_KEY`. Everything else in
 `application.properties` has a sane local default (`DB_URL` defaults to port `5432`; this
 environment's local Postgres runs on `5433`, so override `DB_URL` accordingly). See
 `src/main/resources/application.properties.example` for the full list, and `.env` in repo root
-for actual local values (git-ignored). Spring Boot does not read `.env` automatically — export it
-first, e.g. `set -a && source .env && set +a`, before `./gradlew bootRun`.
+for actual local values (git-ignored). `.env` is loaded automatically into Spring's Environment
+via the `spring-dotenv` dependency (`build.gradle`) — no manual `source .env` step needed before
+`./gradlew bootRun`.
 
 The two Python services are **not** auto-started by the backend (`ml.service.auto.start` /
 `decision.tree.service.auto.start` both default `false` in `application.properties`) — start them

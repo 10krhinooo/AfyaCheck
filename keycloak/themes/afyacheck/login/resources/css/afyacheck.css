@@ -58,6 +58,36 @@ body {
   color: #1c2521;
 }
 
+/* The card itself: replace PatternFly's default Login card chrome outright rather than
+   just tinting it, so this reads as AfyaCheck's own screen, not a restyled vendor
+   template. .pf-v5-c-login__main is the real v2 card element (.card-pf/#kc-form-wrapper/
+   #kc-page-title below are dead v1-theme selectors that don't exist in keycloak.v2's DOM,
+   kept only because removing them isn't worth the risk of an unseen reference elsewhere). */
+.pf-v5-c-login__main {
+  background: #ffffff !important;
+  border: none !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 1px 2px rgba(16, 42, 36, 0.06), 0 8px 24px -12px rgba(16, 42, 36, 0.18) !important;
+  padding: 1.5rem 1.25rem !important;
+}
+
+/* 2.5rem of horizontal card padding (desktop) eats ~20% of a 375px phone's width — scale it
+   down below 992px, restoring today's desktop value unchanged at that breakpoint. */
+@media (min-width: 480px) {
+  .pf-v5-c-login__main { padding: 1.75rem 1.5rem !important; }
+}
+@media (min-width: 640px) {
+  .pf-v5-c-login__main { padding: 2rem 1.75rem !important; }
+}
+@media (min-width: 992px) {
+  .pf-v5-c-login__main { border-radius: 1.5rem !important; padding: 2.5rem !important; }
+}
+
+.pf-v5-c-login__main-header {
+  margin-bottom: 1.5rem !important;
+}
+
+.pf-v5-c-title,
 #kc-header-wrapper,
 .login-pf-header h1,
 #kc-page-title {
@@ -67,10 +97,26 @@ body {
   letter-spacing: -0.01em;
 }
 
+.pf-v5-c-title.pf-m-3xl {
+  font-size: 1.375rem !important;
+}
+@media (min-width: 480px) {
+  .pf-v5-c-title.pf-m-3xl { font-size: 1.5rem !important; }
+}
+@media (min-width: 992px) {
+  .pf-v5-c-title.pf-m-3xl { font-size: 1.75rem !important; }
+}
+
+.pf-v5-c-form__label-text {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1c2521;
+}
+
 .card-pf,
 .login-pf-page-header,
-#kc-form-wrapper,
-.pf-v5-c-login__main-body {
+#kc-form-wrapper {
   border-radius: 1.25rem !important;
   box-shadow: 0 1px 2px rgba(16, 42, 36, 0.06), 0 8px 24px -12px rgba(16, 42, 36, 0.18) !important;
   border: none !important;
@@ -127,4 +173,239 @@ a:hover {
   background-color: #eef6f4 !important;
   border-color: #2f7d6d !important;
   color: #1c4c41 !important;
+}
+
+/* Split-screen layout: brand panel (left) + form (right) on desktop (≥992px, unchanged from
+   the original design). Below 992px the brand panel becomes a condensed top bar — logo and
+   short headline only, centered, divided from the form by a hairline — rather than vanishing
+   outright, so mobile visitors still get the AfyaCheck identity. The decorative blob/icon art
+   and the longer subtext are desktop-only: neither compresses well into a horizontal bar, and
+   both are the least essential elements to sacrifice when width is tight. Mobile-first: base
+   rules are the smallest-phone values, 480px/640px tiers add room, and the 992px tier restores
+   today's desktop layout exactly. */
+body.ac-body {
+  display: block !important;
+  margin: 0;
+  min-height: 100vh;
+  background: #faf7f2 !important;
+}
+
+.ac-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 100vh;
+}
+
+@media (min-width: 992px) {
+  .ac-split {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+}
+
+.ac-split__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  text-align: center;
+  padding: 1.25rem 1.25rem;
+  overflow: hidden;
+  background: linear-gradient(160deg, #eef6f4 0%, #faf7f2 60%, #f1ece2 100%);
+  border-bottom: 1px solid #d3e9e4;
+}
+
+@media (min-width: 480px) {
+  .ac-split__brand { padding: 1.5rem 2rem; }
+}
+@media (min-width: 640px) {
+  .ac-split__brand { padding: 1.75rem 2.5rem; }
+}
+@media (min-width: 992px) {
+  .ac-split__brand {
+    position: relative;
+    flex-direction: column;
+    /* Stretch (the flex default, left implicit here same as in the original rule this
+       replaces) so .ac-split__art — whose only children are absolutely positioned and so
+       have no intrinsic width of their own — still gets the panel's full width to lay the
+       blobs/icons out in. text-align: left handles the text children's alignment instead. */
+    align-items: stretch;
+    justify-content: center;
+    gap: 1.5rem;
+    text-align: left;
+    padding: 4rem 3.5rem;
+    border-bottom: none;
+  }
+}
+
+/* Now a link to the app's home page (see appHomeUrl in theme.properties) — !important and
+   text-decoration:none beat the global `a { color; !important }` / underline so the wordmark
+   doesn't suddenly read as a generic hyperlink. */
+.ac-split__logo {
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: #1c4c41 !important;
+  text-decoration: none;
+  transition: opacity 150ms ease;
+}
+.ac-split__logo:hover {
+  opacity: 0.8;
+}
+@media (min-width: 992px) {
+  .ac-split__logo { font-size: 1.5rem; }
+}
+
+/* Desktop-only decorative art (see rationale above .ac-split__brand). */
+.ac-split__art {
+  display: none;
+}
+@media (min-width: 992px) {
+  .ac-split__art {
+    display: block;
+    position: relative;
+    height: 12rem;
+    margin: 1rem 0;
+  }
+}
+
+.ac-split__blob {
+  position: absolute;
+  border-radius: 45% 55% 60% 40% / 50% 45% 55% 50%;
+  filter: blur(20px);
+  mix-blend-mode: multiply;
+}
+
+.ac-split__blob--a {
+  top: 0;
+  left: 8%;
+  width: 65%;
+  height: 65%;
+  background: rgba(168, 209, 200, 0.7);
+}
+
+.ac-split__blob--b {
+  right: 10%;
+  bottom: 0;
+  width: 45%;
+  height: 45%;
+  background: rgba(123, 181, 170, 0.6);
+}
+
+.ac-split__icon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #256456;
+  box-shadow: 0 8px 24px -12px rgba(16, 42, 36, 0.25);
+}
+
+.ac-split__icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.ac-split__icon--1 {
+  top: 15%;
+  left: 12%;
+}
+
+.ac-split__icon--2 {
+  top: 55%;
+  left: 50%;
+}
+
+.ac-split__icon--3 {
+  top: 10%;
+  left: 68%;
+}
+
+.ac-split__headline {
+  margin: 0;
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: #1c4c41;
+}
+@media (min-width: 480px) {
+  .ac-split__headline { font-size: 1.25rem; }
+}
+@media (min-width: 992px) {
+  .ac-split__headline { max-width: 22rem; font-size: 1.75rem; }
+}
+
+/* Desktop-only long subtext (see rationale above .ac-split__brand). */
+.ac-split__subtext {
+  display: none;
+}
+@media (min-width: 992px) {
+  .ac-split__subtext {
+    display: block;
+    margin: 0;
+    max-width: 22rem;
+    color: #4a564f;
+  }
+}
+
+.ac-split__form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem 1rem;
+}
+@media (min-width: 480px) {
+  .ac-split__form { padding: 1.5rem 1.25rem; }
+}
+@media (min-width: 640px) {
+  .ac-split__form { padding: 1.75rem 1.5rem; }
+}
+@media (min-width: 992px) {
+  .ac-split__form { padding: 2rem 1.5rem; }
+}
+
+/* Minimum 44x44px touch targets below the desktop breakpoint for controls that otherwise
+   inherit compact, mouse-oriented sizing: the password-visibility toggle, the remember-me
+   checkbox row, the language switcher, and social-provider icon links. Gated to <992px so
+   desktop pixels don't move. */
+@media (max-width: 991.98px) {
+  [data-password-toggle] {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #kc-form-options .checkbox label {
+    display: block;
+    min-height: 44px;
+    padding: 0.5rem 0;
+  }
+
+  #kc-form-options .checkbox .pf-v5-c-form__label-text {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  #kc-form-options input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  #login-select-toggle {
+    min-height: 44px;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+  }
+
+  #kc-social-providers a {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }

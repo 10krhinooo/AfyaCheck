@@ -1,0 +1,1 @@
+var e=`afyacheck:result:`;function t(t){sessionStorage.setItem(e+t.sessionId,JSON.stringify(t))}function n(t){let n=sessionStorage.getItem(e+t);return n?JSON.parse(n):null}export{t as n,n as t};

@@ -16,5 +16,14 @@ public class WebConfig implements WebMvcConfigurer {
         // them to that same index.html and let React Router take over once it hydrates.
         registry.addViewController("/app/{path:[^\\.]*}").setViewName("forward:/index.html");
         registry.addViewController("/app/**").setViewName("forward:/index.html");
+
+        // About/FAQ/Privacy/Terms are each individually prerendered to their own static HTML
+        // file at build time (see vite.config.ts ssgOptions.includedRoutes), unlike /app/**'s
+        // single shared shell — forward the clean path to that specific file rather than to
+        // index.html.
+        registry.addViewController("/about").setViewName("forward:/about.html");
+        registry.addViewController("/faq").setViewName("forward:/faq.html");
+        registry.addViewController("/privacy").setViewName("forward:/privacy.html");
+        registry.addViewController("/terms").setViewName("forward:/terms.html");
     }
 }
