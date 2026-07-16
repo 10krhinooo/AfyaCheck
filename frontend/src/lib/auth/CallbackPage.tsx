@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { LinkButton } from '../../components/Button'
+import { StatusMessage } from '../../components/StatusMessage'
 import { getUserManager } from './keycloak'
 
 // Keycloak redirects here after login (see redirect_uri in keycloak.ts and the client's
@@ -21,7 +23,16 @@ export default function CallbackPage() {
   if (error) {
     return (
       <main className="mx-auto max-w-xl px-6 py-16 text-center">
-        <p className="text-coral-700">Sign-in failed: {error}</p>
+        <div className="inline-flex text-left">
+          <StatusMessage tone="error">
+            We couldn’t sign you in ({error}). Return home and try signing in again.
+          </StatusMessage>
+        </div>
+        <div>
+          <LinkButton href="/" variant="secondary" className="mt-6">
+            Return home
+          </LinkButton>
+        </div>
       </main>
     )
   }
