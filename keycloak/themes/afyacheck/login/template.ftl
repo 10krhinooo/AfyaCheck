@@ -74,7 +74,7 @@
 <body id="keycloak-bg" class="${properties.kcBodyClass!} ac-body">
 <div class="ac-split">
   <aside class="ac-split__brand">
-    <span class="ac-split__logo">AfyaCheck</span>
+    <a class="ac-split__logo" href="${properties.appHomeUrl!'/'}">AfyaCheck</a>
 
     <div class="ac-split__art" aria-hidden="true">
       <span class="ac-split__blob ac-split__blob--a"></span>

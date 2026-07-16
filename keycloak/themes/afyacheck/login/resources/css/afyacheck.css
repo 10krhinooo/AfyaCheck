@@ -238,11 +238,19 @@ body.ac-body {
   }
 }
 
+/* Now a link to the app's home page (see appHomeUrl in theme.properties) — !important and
+   text-decoration:none beat the global `a { color; !important }` / underline so the wordmark
+   doesn't suddenly read as a generic hyperlink. */
 .ac-split__logo {
   font-family: 'Fraunces', ui-serif, Georgia, serif;
   font-weight: 600;
   font-size: 1.25rem;
-  color: #1c4c41;
+  color: #1c4c41 !important;
+  text-decoration: none;
+  transition: opacity 150ms ease;
+}
+.ac-split__logo:hover {
+  opacity: 0.8;
 }
 @media (min-width: 992px) {
   .ac-split__logo { font-size: 1.5rem; }
