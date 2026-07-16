@@ -31,6 +31,13 @@
                 border-radius: 0.75rem;
                 background: #ffffff;
             }
+            @media (max-width: 639px) {
+                #kc-register-form input[type="text"],
+                #kc-register-form input[type="email"],
+                #kc-register-form input[type="password"] {
+                    padding: 0.75rem 0.85rem;
+                }
+            }
             #kc-register-form .${properties.kcInputGroup!} {
                 display: flex;
                 align-items: center;

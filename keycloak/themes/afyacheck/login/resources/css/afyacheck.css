@@ -175,10 +175,14 @@ a:hover {
   color: #1c4c41 !important;
 }
 
-/* Split-screen layout: brand panel (left) + form (right). The panel is real markup added
-   in template.ftl (Keycloak has no client runtime to reuse the frontend's BrandMotif
-   component), styled here with the same tokens as the rest of this file. Collapses to a
-   single column identical to the pre-split layout below the lg breakpoint. */
+/* Split-screen layout: brand panel (left) + form (right) on desktop (≥992px, unchanged from
+   the original design). Below 992px the brand panel becomes a condensed top bar — logo and
+   short headline only, centered, divided from the form by a hairline — rather than vanishing
+   outright, so mobile visitors still get the AfyaCheck identity. The decorative blob/icon art
+   and the longer subtext are desktop-only: neither compresses well into a horizontal bar, and
+   both are the least essential elements to sacrifice when width is tight. Mobile-first: base
+   rules are the smallest-phone values, 480px/640px tiers add room, and the 992px tier restores
+   today's desktop layout exactly. */
 body.ac-body {
   display: block !important;
   margin: 0;
@@ -199,33 +203,62 @@ body.ac-body {
 }
 
 .ac-split__brand {
-  display: none;
-  position: relative;
+  display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 1.5rem;
-  padding: 4rem 3.5rem;
+  gap: 0.375rem;
+  text-align: center;
+  padding: 1.25rem 1.25rem;
   overflow: hidden;
   background: linear-gradient(160deg, #eef6f4 0%, #faf7f2 60%, #f1ece2 100%);
+  border-bottom: 1px solid #d3e9e4;
 }
 
+@media (min-width: 480px) {
+  .ac-split__brand { padding: 1.5rem 2rem; }
+}
+@media (min-width: 640px) {
+  .ac-split__brand { padding: 1.75rem 2.5rem; }
+}
 @media (min-width: 992px) {
   .ac-split__brand {
-    display: flex;
+    position: relative;
+    flex-direction: column;
+    /* Stretch (the flex default, left implicit here same as in the original rule this
+       replaces) so .ac-split__art — whose only children are absolutely positioned and so
+       have no intrinsic width of their own — still gets the panel's full width to lay the
+       blobs/icons out in. text-align: left handles the text children's alignment instead. */
+    align-items: stretch;
+    justify-content: center;
+    gap: 1.5rem;
+    text-align: left;
+    padding: 4rem 3.5rem;
+    border-bottom: none;
   }
 }
 
 .ac-split__logo {
   font-family: 'Fraunces', ui-serif, Georgia, serif;
   font-weight: 600;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   color: #1c4c41;
 }
+@media (min-width: 992px) {
+  .ac-split__logo { font-size: 1.5rem; }
+}
 
+/* Desktop-only decorative art (see rationale above .ac-split__brand). */
 .ac-split__art {
-  position: relative;
-  height: 12rem;
-  margin: 1rem 0;
+  display: none;
+}
+@media (min-width: 992px) {
+  .ac-split__art {
+    display: block;
+    position: relative;
+    height: 12rem;
+    margin: 1rem 0;
+  }
 }
 
 .ac-split__blob {
@@ -286,22 +319,85 @@ body.ac-body {
 
 .ac-split__headline {
   margin: 0;
-  max-width: 22rem;
   font-family: 'Fraunces', ui-serif, Georgia, serif;
   font-weight: 600;
-  font-size: 1.75rem;
+  font-size: 1.125rem;
   color: #1c4c41;
 }
+@media (min-width: 480px) {
+  .ac-split__headline { font-size: 1.25rem; }
+}
+@media (min-width: 992px) {
+  .ac-split__headline { max-width: 22rem; font-size: 1.75rem; }
+}
 
+/* Desktop-only long subtext (see rationale above .ac-split__brand). */
 .ac-split__subtext {
-  margin: 0;
-  max-width: 22rem;
-  color: #4a564f;
+  display: none;
+}
+@media (min-width: 992px) {
+  .ac-split__subtext {
+    display: block;
+    margin: 0;
+    max-width: 22rem;
+    color: #4a564f;
+  }
 }
 
 .ac-split__form {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1.5rem;
+  padding: 1.25rem 1rem;
+}
+@media (min-width: 480px) {
+  .ac-split__form { padding: 1.5rem 1.25rem; }
+}
+@media (min-width: 640px) {
+  .ac-split__form { padding: 1.75rem 1.5rem; }
+}
+@media (min-width: 992px) {
+  .ac-split__form { padding: 2rem 1.5rem; }
+}
+
+/* Minimum 44x44px touch targets below the desktop breakpoint for controls that otherwise
+   inherit compact, mouse-oriented sizing: the password-visibility toggle, the remember-me
+   checkbox row, the language switcher, and social-provider icon links. Gated to <992px so
+   desktop pixels don't move. */
+@media (max-width: 991.98px) {
+  [data-password-toggle] {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #kc-form-options .checkbox label {
+    display: block;
+    min-height: 44px;
+    padding: 0.5rem 0;
+  }
+
+  #kc-form-options .checkbox .pf-v5-c-form__label-text {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  #kc-form-options input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  #login-select-toggle {
+    min-height: 44px;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+  }
+
+  #kc-social-providers a {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }

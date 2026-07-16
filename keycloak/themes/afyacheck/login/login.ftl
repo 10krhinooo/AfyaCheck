@@ -27,6 +27,12 @@
                 border-radius: 0.75rem;
                 background: #ffffff;
             }
+            @media (max-width: 639px) {
+                #kc-form-login input[type="text"],
+                #kc-form-login input[type="password"] {
+                    padding: 0.75rem 0.85rem;
+                }
+            }
             #kc-form-login .${properties.kcInputGroup!} {
                 display: flex;
                 align-items: center;
