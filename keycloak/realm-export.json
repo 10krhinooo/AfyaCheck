@@ -8,6 +8,7 @@
   "registrationAllowed": true,
   "registrationEmailAsUsername": true,
   "resetPasswordAllowed": true,
+  "passwordPolicy": "length(8) and upperCase(1) and lowerCase(1) and digits(1)",
   "verifyEmail": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,

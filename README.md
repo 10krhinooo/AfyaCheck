@@ -53,11 +53,9 @@ runs Keycloak against Postgres with proper secrets, not `start-dev`'s ephemeral 
 
 ### 3. Backend configuration
 
-Copy `src/main/resources/application.properties.example` to a location outside version control (or export the same names as real environment variables) and fill in real values:
-
-```bash
-cp src/main/resources/application.properties.example .env.local
-```
+Create a `.env` file in the repo root (see `src/main/resources/application.properties.example`
+for the full list of names) and fill in real values. It's loaded automatically into Spring's
+environment at startup via the `spring-dotenv` dependency — no manual export step needed.
 
 Required variables:
 

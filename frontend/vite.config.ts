@@ -22,10 +22,10 @@ export default {
     setupFiles: ['./tests/setup.ts'],
   },
   ssgOptions: {
-    // Only "/" (the landing page) is prerendered to static HTML at build time;
-    // everything under /app/** is auth-walled/session-personalized with zero
-    // SEO value and stays a normal client-rendered SPA route.
-    includedRoutes: () => ['/'],
+    // "/" plus the static marketing/legal pages are prerendered to static HTML at build
+    // time; everything under /app/** is auth-walled/session-personalized with zero SEO
+    // value and stays a normal client-rendered SPA route.
+    includedRoutes: () => ['/', '/about', '/faq', '/privacy', '/terms'],
   } satisfies Partial<ViteReactSSGOptions>,
 } satisfies UserConfig & {
   test?: VitestInlineConfig

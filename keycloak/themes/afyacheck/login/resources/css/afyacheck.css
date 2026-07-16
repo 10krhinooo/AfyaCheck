@@ -58,6 +58,24 @@ body {
   color: #1c2521;
 }
 
+/* The card itself: replace PatternFly's default Login card chrome outright rather than
+   just tinting it, so this reads as AfyaCheck's own screen, not a restyled vendor
+   template. .pf-v5-c-login__main is the real v2 card element (.card-pf/#kc-form-wrapper/
+   #kc-page-title below are dead v1-theme selectors that don't exist in keycloak.v2's DOM,
+   kept only because removing them isn't worth the risk of an unseen reference elsewhere). */
+.pf-v5-c-login__main {
+  background: #ffffff !important;
+  border: none !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 0 1px 2px rgba(16, 42, 36, 0.06), 0 8px 24px -12px rgba(16, 42, 36, 0.18) !important;
+  padding: 2.5rem !important;
+}
+
+.pf-v5-c-login__main-header {
+  margin-bottom: 1.5rem !important;
+}
+
+.pf-v5-c-title,
 #kc-header-wrapper,
 .login-pf-header h1,
 #kc-page-title {
@@ -67,10 +85,20 @@ body {
   letter-spacing: -0.01em;
 }
 
+.pf-v5-c-title.pf-m-3xl {
+  font-size: 1.75rem !important;
+}
+
+.pf-v5-c-form__label-text {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1c2521;
+}
+
 .card-pf,
 .login-pf-page-header,
-#kc-form-wrapper,
-.pf-v5-c-login__main-body {
+#kc-form-wrapper {
   border-radius: 1.25rem !important;
   box-shadow: 0 1px 2px rgba(16, 42, 36, 0.06), 0 8px 24px -12px rgba(16, 42, 36, 0.18) !important;
   border: none !important;
@@ -127,4 +155,135 @@ a:hover {
   background-color: #eef6f4 !important;
   border-color: #2f7d6d !important;
   color: #1c4c41 !important;
+}
+
+/* Split-screen layout: brand panel (left) + form (right). The panel is real markup added
+   in template.ftl (Keycloak has no client runtime to reuse the frontend's BrandMotif
+   component), styled here with the same tokens as the rest of this file. Collapses to a
+   single column identical to the pre-split layout below the lg breakpoint. */
+body.ac-body {
+  display: block !important;
+  margin: 0;
+  min-height: 100vh;
+  background: #faf7f2 !important;
+}
+
+.ac-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 100vh;
+}
+
+@media (min-width: 992px) {
+  .ac-split {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+}
+
+.ac-split__brand {
+  display: none;
+  position: relative;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 4rem 3.5rem;
+  overflow: hidden;
+  background: linear-gradient(160deg, #eef6f4 0%, #faf7f2 60%, #f1ece2 100%);
+}
+
+@media (min-width: 992px) {
+  .ac-split__brand {
+    display: flex;
+  }
+}
+
+.ac-split__logo {
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: #1c4c41;
+}
+
+.ac-split__art {
+  position: relative;
+  height: 12rem;
+  margin: 1rem 0;
+}
+
+.ac-split__blob {
+  position: absolute;
+  border-radius: 45% 55% 60% 40% / 50% 45% 55% 50%;
+  filter: blur(20px);
+  mix-blend-mode: multiply;
+}
+
+.ac-split__blob--a {
+  top: 0;
+  left: 8%;
+  width: 65%;
+  height: 65%;
+  background: rgba(168, 209, 200, 0.7);
+}
+
+.ac-split__blob--b {
+  right: 10%;
+  bottom: 0;
+  width: 45%;
+  height: 45%;
+  background: rgba(123, 181, 170, 0.6);
+}
+
+.ac-split__icon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #256456;
+  box-shadow: 0 8px 24px -12px rgba(16, 42, 36, 0.25);
+}
+
+.ac-split__icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.ac-split__icon--1 {
+  top: 15%;
+  left: 12%;
+}
+
+.ac-split__icon--2 {
+  top: 55%;
+  left: 50%;
+}
+
+.ac-split__icon--3 {
+  top: 10%;
+  left: 68%;
+}
+
+.ac-split__headline {
+  margin: 0;
+  max-width: 22rem;
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+  font-weight: 600;
+  font-size: 1.75rem;
+  color: #1c4c41;
+}
+
+.ac-split__subtext {
+  margin: 0;
+  max-width: 22rem;
+  color: #4a564f;
+}
+
+.ac-split__form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
 }

@@ -1,6 +1,7 @@
 import { ClipboardList, MapPin } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
+import { BrandMotif } from '../../components/BrandMotif'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { LinkButton } from '../../components/Button'
@@ -58,8 +59,13 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="font-display text-3xl text-ink">Welcome back, {data.username}</h1>
-      <p className="mt-2 text-ink-soft">Continue your assessment or explore your options.</p>
+      <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
+        <BrandMotif size="sm" className="flex-shrink-0" />
+        <div>
+          <h1 className="font-display text-3xl text-ink">Welcome back, {data.username}</h1>
+          <p className="mt-2 text-ink-soft">Continue your assessment or explore your options.</p>
+        </div>
+      </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         <Card interactive className="p-6">
