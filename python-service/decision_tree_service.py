@@ -66,6 +66,7 @@ class QuestionResponse(BaseModel):
     remaining_questions: List[str]
     timestamp: str
     enough_info: bool = False
+    model_version: str = "unknown"
     error: Optional[str] = None
 
 # --- Core Business Logic Class (Integrated Utilities) ---
@@ -94,11 +95,25 @@ class SmartQuestionnaire:
                 for i, q in enumerate(self.all_questions)
             ])
 
+            # Derived from the loaded artifact's file mtime rather than the bundled
+            # training_info (which can lag -- e.g. model_metadata_20251124_113924.json on
+            # disk describes an older training run than whatever MODEL_FILENAME currently
+            # points at), so this always reflects the model actually in use.
+            self.model_version = self._compute_model_version()
+
             logger.info(f"Smart model loaded: {self.model_path}")
+            logger.info(f"Model version: {self.model_version}")
 
         except Exception as e:
             logger.error(f"Failed to load smart model from {model_path}: {e}")
             raise
+
+    def _compute_model_version(self) -> str:
+        try:
+            mtime = os.path.getmtime(self.model_path)
+            return f"decision-tree-{datetime.fromtimestamp(mtime).strftime('%Y%m%d')}"
+        except OSError:
+            return "decision-tree-unknown"
 
     # --- Feature Engineering Utility Functions (From Training Script) ---
 
@@ -613,7 +628,8 @@ async def get_next_question_api(request: QuestionRequest):
             confidence=prediction['confidence'],
             remaining_questions=remaining_questions,
             timestamp=datetime.now().isoformat(),
-            enough_info=prediction['enough_info']
+            enough_info=prediction['enough_info'],
+            model_version=questionnaire.model_version
         )
 
     except Exception as e:
@@ -642,6 +658,7 @@ async def get_model_info():
     return {
         "model_loaded": True,
         "model_name": MODEL_FILENAME,
+        "model_version": questionnaire.model_version,
         "feature_count": len(questionnaire.feature_columns),
         "question_count": len(questionnaire.all_questions),
         "tree_depth": questionnaire.model.get_depth() if hasattr(questionnaire.model, 'get_depth') else 'N/A',

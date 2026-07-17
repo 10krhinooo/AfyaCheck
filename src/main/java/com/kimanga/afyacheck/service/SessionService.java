@@ -304,11 +304,11 @@ public class SessionService {
     }
 
     @Transactional
-    public void saveRiskAssessment(String sessionId, String riskLevel, Integer riskScore, String recommendations) {
+    public void saveRiskAssessment(String sessionId, String riskLevel, Integer riskScore, String recommendations, String modelVersion) {
         try {
             String safeSessionId = createSafeSessionId(sessionId);
-            logger.info("Saving risk assessment for session: {}, risk level: {}, score: {}",
-                    safeSessionId, riskLevel, riskScore);
+            logger.info("Saving risk assessment for session: {}, risk level: {}, score: {}, model: {}",
+                    safeSessionId, riskLevel, riskScore, modelVersion);
 
             Optional<Session> sessionOpt = sessionRepository.findBySessionId(safeSessionId);
             if (sessionOpt.isEmpty()) {
@@ -326,6 +326,7 @@ public class SessionService {
             assessment.setSession(session);
             assessment.setRiskLevel(riskLevel);
             assessment.setRiskScore(riskScore);
+            assessment.setModelVersion(modelVersion);
 
             // Convert String to List<String> for JSON storage
             List<String> recommendationsList = new ArrayList<>();

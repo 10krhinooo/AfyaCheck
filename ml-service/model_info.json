@@ -9,8 +9,7 @@
     "condom_use"
   ],
   "model_type": "xgboost",
-  "model_version": "1.0.0",
-  "training_date": "2024-01-01",
+  "_note": "Feature columns for the legacy fallback model only, used when the primary KENPHIA ensemble (kenphia_ensemble.pkl) isn't present -- see HIVRiskPredictor._compute_model_version() in app.py for the version actually reported per-prediction.",
   "feature_descriptions": {
     "age": "Age in years (15-65)",
     "marital_status": "Marital status category",

@@ -234,7 +234,7 @@ class SessionServiceTest {
     void saveRiskAssessmentThrowsWhenSessionMissing() {
         when(sessionRepository.findBySessionId("sid-15")).thenReturn(Optional.empty());
         org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
-                () -> sessionService.saveRiskAssessment("sid-15", "LOW", 1, "rec1; rec2"));
+                () -> sessionService.saveRiskAssessment("sid-15", "LOW", 1, "rec1; rec2", "test-model-v1"));
     }
 
     @Test
@@ -242,11 +242,12 @@ class SessionServiceTest {
         Session session = validSession("sid-16");
         when(sessionRepository.findBySessionId("sid-16")).thenReturn(Optional.of(session));
 
-        sessionService.saveRiskAssessment("sid-16", "HIGH", 9, "rec1; rec2");
+        sessionService.saveRiskAssessment("sid-16", "HIGH", 9, "rec1; rec2", "test-model-v1");
 
         ArgumentCaptor<RiskAssessment> captor = ArgumentCaptor.forClass(RiskAssessment.class);
         verify(riskAssessmentRepository).save(captor.capture());
         assertThat(captor.getValue().getRecommendations()).containsExactly("rec1", "rec2");
+        assertThat(captor.getValue().getModelVersion()).isEqualTo("test-model-v1");
         assertThat(session.getStatus()).isEqualTo("completed");
         assertThat(session.getRiskScore()).isEqualTo(9);
         verify(sessionRepository).save(session);
@@ -522,7 +523,7 @@ class SessionServiceTest {
         when(sessionRepository.findBySessionId("sid-x8")).thenReturn(Optional.of(invalid));
 
         org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
-                () -> sessionService.saveRiskAssessment("sid-x8", "LOW", 1, null));
+                () -> sessionService.saveRiskAssessment("sid-x8", "LOW", 1, null, null));
     }
 
     @Test
