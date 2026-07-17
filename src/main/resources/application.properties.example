@@ -5,9 +5,14 @@
 # ${ENV_VAR} placeholders, so setting the environment variable is enough;
 # no code or property file changes are needed.
 #
-# DB_PASSWORD, MAIL_PASSWORD, and REMEMBER_ME_KEY have no default value in
-# application.properties: the app will fail to start if they are unset,
+# DB_PASSWORD, MAIL_PASSWORD, REMEMBER_ME_KEY, and KEYCLOAK_BACKEND_CLIENT_SECRET have no
+# default value in application.properties: the app will fail to start if they are unset,
 # rather than silently running with a blank credential.
+#
+# SEED_ADMIN_PASSWORD isn't read by the Spring app itself, but docker-compose.yml passes it
+# into the Keycloak container to substitute into keycloak/realm-export.json's seed admin
+# user (admin@afyacheck.com) — set it here too so `docker compose up` has a real password
+# to import instead of a literal one committed to version control.
 
 spring.application.name=afyacheck
 
@@ -22,6 +27,22 @@ MAIL_PASSWORD=change-me
 
 # --- Remember-me cookie signing key (required, no default) ---
 REMEMBER_ME_KEY=change-me-to-a-long-random-string
+
+# --- Keycloak backend service account (required, no default) ---
+# KeycloakAdminService uses this to call Keycloak's Admin REST API and assign/remove realm
+# roles when an admin changes a user's role. Must match the secret the "afyacheck-backend"
+# client is imported with in keycloak/realm-export.json (docker-compose.yml passes this same
+# value into the Keycloak container). Generate one with: openssl rand -hex 32
+KEYCLOAK_BACKEND_CLIENT_SECRET=change-me
+
+# --- Keycloak seed admin password (required for `docker compose up`, no default) ---
+# Substituted into keycloak/realm-export.json's seed admin user at import time.
+SEED_ADMIN_PASSWORD=change-me
+
+# --- Python executable path (optional) ---
+# Defaults to a Windows path (C:/Python314/python.exe) in application.properties. Override on
+# Linux/macOS if PythonServiceManager fails to start the two Python services, e.g.:
+# PYTHON_EXECUTABLE_PATH=/usr/bin/python3
 
 # --- Google OAuth2 (currently disabled — properties are commented out in
 # application.properties; uncomment there too if you enable this) ---

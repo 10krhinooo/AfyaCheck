@@ -45,9 +45,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, KeycloakUserSyncFilter keycloakUserSyncFilter) throws Exception {
+    public SecurityFilterChain filterChain(
+            HttpSecurity http,
+            KeycloakUserSyncFilter keycloakUserSyncFilter,
+            AuditingAccessDeniedHandler auditingAccessDeniedHandler) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .exceptionHandling(exceptions -> exceptions.accessDeniedHandler(auditingAccessDeniedHandler))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                         .sessionFixation(fixation -> fixation.changeSessionId())

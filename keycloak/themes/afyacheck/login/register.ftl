@@ -17,8 +17,10 @@
                shared afyacheck.css. Also gives every field (whichever macro generated it —
                user-profile-commons.ftl's dynamic attributes, or the password fields below) a
                single, clean bordered box instead of the default PatternFly nesting. */
-            #kc-register-form .${properties.kcFormGroupClass!} {
-                margin-bottom: 1.75rem;
+            /* .pf-v5-c-form is already display:grid with its own gap var — just override the
+               gap value rather than a fixed margin-bottom per field. */
+            #kc-register-form {
+                gap: 1.75rem;
             }
             #kc-register-form input[type="text"],
             #kc-register-form input[type="email"],
@@ -38,10 +40,37 @@
                     padding: 0.75rem 0.85rem;
                 }
             }
+            /* Reserve a slot for the validation message so a field's height changes by a
+               fixed, small amount when it toggles between valid/invalid. */
+            #kc-register-form .${properties.kcInputErrorMessageClass!} {
+                display: block;
+                min-height: 1rem;
+                margin-top: 0.375rem;
+            }
+            /* Toggle button sits absolutely inside the input's right edge, GitHub/Google
+               style, instead of as a separate flex item beside it. */
             #kc-register-form .${properties.kcInputGroup!} {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
+                position: relative;
+            }
+            #kc-register-form .${properties.kcInputGroup!} .${properties.kcInputClass!} {
+                display: block;
+                width: 100%;
+            }
+            #kc-register-form input[type="password"] {
+                padding-right: 2.75rem;
+            }
+            #kc-register-form [data-password-toggle] {
+                position: absolute;
+                top: 50%;
+                right: 0.75rem;
+                transform: translateY(-50%);
+                border: none;
+                background: transparent;
+            }
+            /* pf-m-control buttons draw their border via this ::after pseudo-element, not
+               the border property above — left alone it still renders a boxed outline. */
+            #kc-register-form [data-password-toggle]::after {
+                border: none;
             }
             #ac-password-requirements {
                 margin: 0.75rem 0 0;

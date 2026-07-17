@@ -10,6 +10,7 @@ import type { UsersResponse } from './types'
 
 const LOAD_ERROR = 'We couldn’t load the user list. Check your connection and try again.'
 const TOGGLE_ERROR = 'We couldn’t update that user’s status. Check your connection and try again.'
+const ROLE_ERROR = 'We couldn’t update that user’s role. Check your connection and try again.'
 
 export default function AdminUsersPage() {
   const [data, setData] = useState<UsersResponse | null>(null)
@@ -36,6 +37,21 @@ export default function AdminUsersPage() {
       load()
     } catch {
       setError(TOGGLE_ERROR)
+    } finally {
+      setPendingId(null)
+    }
+  }
+
+  async function changeRole(userId: string, name: string, role: 'USER' | 'ADMIN') {
+    setPendingId(userId)
+    setError(null)
+    setSuccess(null)
+    try {
+      await apiPost('/api/admin/users/role', { userId: Number(userId), role })
+      setSuccess(`${name} is now ${role === 'ADMIN' ? 'an admin' : 'a regular user'}.`)
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : ROLE_ERROR)
     } finally {
       setPendingId(null)
     }
@@ -115,7 +131,18 @@ export default function AdminUsersPage() {
                   >
                     <td className="py-2 text-ink">{user.name}</td>
                     <td className="py-2 text-ink-soft">{user.email}</td>
-                    <td className="py-2 text-ink-soft">{user.role}</td>
+                    <td className="py-2">
+                      <select
+                        aria-label={`Role for ${user.name}`}
+                        value={user.role}
+                        disabled={pendingId === user.id}
+                        onChange={(e) => changeRole(user.id, user.name, e.target.value as 'USER' | 'ADMIN')}
+                        className="rounded-lg border border-teal-100 bg-paper px-2 py-1 text-sm text-ink-soft disabled:opacity-50"
+                      >
+                        <option value="USER">User</option>
+                        <option value="ADMIN">Admin</option>
+                      </select>
+                    </td>
                     <td className="py-2">
                       <Badge tone={user.enabled ? 'low' : 'neutral'}>
                         {user.enabled ? 'Active' : 'Disabled'}
@@ -145,9 +172,22 @@ export default function AdminUsersPage() {
                   <Badge tone={user.enabled ? 'low' : 'neutral'}>{user.enabled ? 'Active' : 'Disabled'}</Badge>
                 </div>
                 <p className="mt-1 text-sm text-ink-soft">{user.email}</p>
-                <p className="mt-1 text-sm text-ink-soft">
-                  {user.role} &middot; {user.questionnaireCount} assessments
-                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <label className="text-sm text-ink-soft" htmlFor={`role-${user.id}`}>
+                    Role
+                  </label>
+                  <select
+                    id={`role-${user.id}`}
+                    value={user.role}
+                    disabled={pendingId === user.id}
+                    onChange={(e) => changeRole(user.id, user.name, e.target.value as 'USER' | 'ADMIN')}
+                    className="rounded-lg border border-teal-100 bg-paper px-2 py-1 text-sm text-ink-soft disabled:opacity-50"
+                  >
+                    <option value="USER">User</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
+                <p className="mt-1 text-sm text-ink-soft">{user.questionnaireCount} assessments</p>
                 <Button
                   variant="ghost"
                   className="mt-2"

@@ -11,11 +11,10 @@
                shared afyacheck.css — gives each field a single, clean bordered box instead
                of the default PatternFly form-control nesting, and consistent breathing room
                between fields. */
-            #kc-form-login .${properties.kcFormGroupClass!} {
-                margin-bottom: 1.75rem;
-            }
-            #kc-form-login .${properties.kcFormGroupClass!}:last-child {
-                margin-bottom: 0;
+            /* .pf-v5-c-form is already display:grid with its own gap var — just override the
+               gap value rather than reintroducing a fixed margin-bottom per field. */
+            #kc-form-login {
+                gap: 1.75rem;
             }
             #kc-form-login input[type="text"],
             #kc-form-login input[type="password"] {
@@ -33,10 +32,38 @@
                     padding: 0.75rem 0.85rem;
                 }
             }
+            /* Reserve a slot for the validation message so a field's height changes by a
+               fixed, small amount when it toggles between valid/invalid, rather than by
+               whatever the message's own line count happens to be. */
+            #kc-form-login .${properties.kcInputErrorMessageClass!} {
+                display: block;
+                min-height: 1rem;
+                margin-top: 0.375rem;
+            }
+            /* Toggle button sits absolutely inside the input's right edge, GitHub/Google
+               style, instead of as a separate flex item beside it. */
             #kc-form-login .${properties.kcInputGroup!} {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
+                position: relative;
+            }
+            #kc-form-login .${properties.kcInputGroup!} .${properties.kcInputClass!} {
+                display: block;
+                width: 100%;
+            }
+            #kc-form-login input[type="password"] {
+                padding-right: 2.75rem;
+            }
+            #kc-form-login [data-password-toggle] {
+                position: absolute;
+                top: 50%;
+                right: 0.75rem;
+                transform: translateY(-50%);
+                border: none;
+                background: transparent;
+            }
+            /* pf-m-control buttons draw their border via this ::after pseudo-element, not
+               the border property above — left alone it still renders a boxed outline. */
+            #kc-form-login [data-password-toggle]::after {
+                border: none;
             }
             #kc-form-login #kc-form-options {
                 margin-top: 0.25rem;

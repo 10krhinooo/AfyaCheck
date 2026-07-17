@@ -4,6 +4,7 @@ const links = [
   { to: '/app/admin', label: 'Dashboard', end: true },
   { to: '/app/admin/users', label: 'Users' },
   { to: '/app/admin/questions', label: 'Questions' },
+  { to: '/app/admin/audit-log', label: 'Audit log' },
 ]
 
 export function AdminNav() {
