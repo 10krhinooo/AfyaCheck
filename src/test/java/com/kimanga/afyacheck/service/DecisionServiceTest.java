@@ -415,23 +415,6 @@ class DecisionServiceTest {
     }
 
     @Test
-    void debugQuestionDatabaseReturnsQuestionSummaries() {
-        Question q = question("q1", "yes_no");
-        when(questionRepository.findByIsActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(q));
-
-        Map<String, Object> debug = decisionService.debugQuestionDatabase();
-
-        assertThat(debug.get("totalActiveQuestions")).isEqualTo(1);
-    }
-
-    @Test
-    void debugQuestionDatabaseReturnsErrorOnException() {
-        when(questionRepository.findByIsActiveTrueOrderByDisplayOrderAsc()).thenThrow(new RuntimeException("boom"));
-        Map<String, Object> debug = decisionService.debugQuestionDatabase();
-        assertThat(debug).containsKey("error");
-    }
-
-    @Test
     void getDecisionTreeStatusHealthy() {
         when(decisionTreeClient.isServiceHealthy()).thenReturn(true);
         Map<String, Object> status = decisionService.getDecisionTreeStatus();
@@ -446,20 +429,19 @@ class DecisionServiceTest {
     }
 
     @Test
-    void debugDatabaseStatusIncludesCountAndHealth() {
-        when(decisionTreeClient.isServiceHealthy()).thenReturn(true);
-        when(questionRepository.countByIsActiveTrue()).thenReturn(10L);
-
-        Map<String, Object> status = decisionService.debugDatabaseStatus();
-
-        assertThat(status.get("decisionTreeServiceAvailable")).isEqualTo(true);
-        assertThat(status.get("totalQuestionsInDatabase")).isEqualTo(10);
-    }
-
-    @Test
     void getTotalActiveQuestionsCountFallsBackTo40OnException() {
+        Question q = question("consent", "yes_no");
+        when(questionRepository.findByIsActiveTrue()).thenReturn(List.of(q));
+        when(decisionTreeClient.getNextQuestion(anyString(), any(), any())).thenReturn("consent");
+        when(questionRepository.findByQuestionKeyAndIsActiveTrue("consent")).thenReturn(Optional.of(q));
         when(questionRepository.countByIsActiveTrue()).thenThrow(new RuntimeException("boom"));
-        Map<String, Object> status = decisionService.debugDatabaseStatus();
-        assertThat(status.get("totalQuestionsInDatabase")).isEqualTo(40);
+
+        Map<String, String> answers = new HashMap<>();
+        answers.put("_sessionId", "sid-11");
+        answers.put("someprior", "Yes");
+
+        Map<String, Object> result = decisionService.getNextQuestion(answers);
+
+        assertThat(result.get("totalQuestions")).isEqualTo(40);
     }
 }

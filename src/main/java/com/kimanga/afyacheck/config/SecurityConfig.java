@@ -1,5 +1,6 @@
 package com.kimanga.afyacheck.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,6 +45,15 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * The SPA's oidc-client-ts talks directly to this origin (OIDC discovery + token endpoint)
+     * from the browser, so it must be allowed in the CSP's connect-src below or every
+     * signinRedirect()/silent-renew call gets blocked client-side before it even leaves the
+     * page — same default as keycloak.admin.server-url since it's the same Keycloak instance.
+     */
+    @Value("${keycloak.admin.server-url:http://localhost:8180}")
+    private String keycloakServerUrl;
+
     @Bean
     public SecurityFilterChain filterChain(
             HttpSecurity http,
@@ -67,6 +77,15 @@ public class SecurityConfig {
                                 "/assets/**",
                                 "/favicon.svg",
                                 "/index.html",
+                                // vite-react-ssg's client runtime fetches these (no auth header
+                                // attached — it's a plain browser fetch, not apiFetch) to look up
+                                // prerendered loader data for the current route; unauthenticated
+                                // visitors landing on "/" (or an /app/** deep link, which reuses
+                                // that same prerendered shell) need to reach them unauthenticated
+                                // too, or the fetch 401s with an empty body and vite-react-ssg's
+                                // `.json()` call on it throws "Unexpected end of JSON input".
+                                "/static-loader-data-manifest-*.json",
+                                "/static-loader-data/**",
                                 // Prerendered marketing/legal pages (see WebConfig) — public by nature,
                                 // same as "/" above. Both the clean path and its forward:/*.html target
                                 // are needed: Spring Security re-evaluates on the internal FORWARD
@@ -109,13 +128,26 @@ public class SecurityConfig {
                         // script-src/connect-src allow maps.googleapis.com for the health-centers
                         // Maps JS embed (see HealthCenterController, useGoogleMaps.ts); img-src
                         // covers the map tiles Maps JS pulls from Google's CDN domains.
+                        //
+                        // script-src needs 'unsafe-inline': vite-react-ssg emits two unhashed
+                        // inline <script> tags in index.html (window.__staticRouterHydrationData
+                        // and window.__VITE_REACT_SSG_HASH__) with no nonce/hash support of its
+                        // own — without this the browser silently drops both, the hash stays
+                        // undefined, the SPA's static-loader-data-manifest-undefined.json fetch
+                        // 404s, and .json() throws "Unexpected end of JSON input" on every
+                        // /app/** page load.
+                        //
+                        // connect-src needs the Keycloak origin: oidc-client-ts's signinRedirect()
+                        // fetches the OIDC discovery document straight from the browser — without
+                        // it that fetch is blocked by CSP and login always fails with "The
+                        // authentication service is unavailable right now."
                         .contentSecurityPolicy(csp -> csp.policyDirectives(
                                 "default-src 'self'; "
-                                        + "script-src 'self' https://maps.googleapis.com; "
+                                        + "script-src 'self' 'unsafe-inline' https://maps.googleapis.com; "
                                         + "style-src 'self' 'unsafe-inline'; "
                                         + "img-src 'self' data: https://*.googleapis.com https://*.gstatic.com https://*.ggpht.com; "
                                         + "font-src 'self' data:; "
-                                        + "connect-src 'self' https://maps.googleapis.com; "
+                                        + "connect-src 'self' " + keycloakServerUrl + " https://maps.googleapis.com; "
                                         + "frame-ancestors 'self'; "
                                         + "base-uri 'self'; "
                                         + "form-action 'self'"

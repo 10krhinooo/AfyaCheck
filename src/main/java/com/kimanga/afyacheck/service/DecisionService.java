@@ -517,46 +517,11 @@ public class DecisionService {
         return calculateRiskScoreWithML(answers);
     }
 
-    public Map<String, Object> debugQuestionDatabase() {
-        Map<String, Object> debugInfo = new HashMap<>();
-
-        try {
-            List<Question> allQuestions = questionRepository.findByIsActiveTrueOrderByDisplayOrderAsc();
-            debugInfo.put("totalActiveQuestions", allQuestions.size());
-
-            List<Map<String, Object>> questionsList = new ArrayList<>();
-            for (Question q : allQuestions) {
-                Map<String, Object> qInfo = new HashMap<>();
-                qInfo.put("key", q.getQuestionKey());
-                qInfo.put("text", q.getQuestionText());
-                qInfo.put("type", q.getQuestionType());
-                qInfo.put("section", q.getSectionTitle());
-                qInfo.put("order", q.getDisplayOrder());
-                qInfo.put("options", parseOptionsToString(q.getOptions(), q.getQuestionType()));
-                questionsList.add(qInfo);
-            }
-            debugInfo.put("questions", questionsList);
-
-        } catch (Exception e) {
-            debugInfo.put("error", "Failed to fetch questions: " + e.getMessage());
-        }
-
-        return debugInfo;
-    }
-
     public Map<String, Object> getDecisionTreeStatus() {
         boolean healthy = decisionTreeClient.isServiceHealthy();
         return Map.of(
                 "status", healthy ? "HEALTHY" : "DEGRADED",
                 "serviceUrl", healthy ? "Connected" : "Disconnected",
-                "timestamp", new Date().toString()
-        );
-    }
-
-    public Map<String, Object> debugDatabaseStatus() {
-        return Map.of(
-                "decisionTreeServiceAvailable", decisionTreeClient.isServiceHealthy(),
-                "totalQuestionsInDatabase", getTotalActiveQuestionsCount(),
                 "timestamp", new Date().toString()
         );
     }
