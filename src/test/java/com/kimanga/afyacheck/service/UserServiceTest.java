@@ -13,17 +13,20 @@ import com.kimanga.afyacheck.repository.UserRepository;
 import com.kimanga.afyacheck.repository.VerificationTokenRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -51,6 +54,21 @@ class UserServiceTest {
         userService = new UserService(userRepository, verificationTokenRepository,
                 passwordResetTokenRepository, passwordEncoder, emailService,
                 keycloakAdminService, adminAuditLogRepository);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAs(String email) {
+        Jwt jwt = Jwt.withTokenValue("token")
+                .header("alg", "none")
+                .claim("email", email)
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(60))
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
     }
 
     private User validNewUser() {
@@ -237,43 +255,60 @@ class UserServiceTest {
     }
 
     @Test
-    void changeUserRoleFailsWhenUserNotFound() {
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
-        ServiceResult<Void> result = userService.changeUserRole(1L, UserRole.ADMIN, "admin-kc-id");
+    void promoteToAdminFailsWhenUserNotFound() {
+        when(userRepository.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
+        ServiceResult<Void> result = userService.promoteToAdmin("nobody@example.com", "admin-kc-id");
         assertThat(result.isSuccess()).isFalse();
     }
 
     @Test
-    void changeUserRoleFailsWhenUserHasNoKeycloakIdentity() {
+    void promoteToAdminFailsWhenUserHasNoKeycloakIdentity() {
         User user = new User();
+        user.setEmail("legacy@example.com");
         user.setRole(UserRole.USER);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("legacy@example.com")).thenReturn(Optional.of(user));
 
-        ServiceResult<Void> result = userService.changeUserRole(1L, UserRole.ADMIN, "admin-kc-id");
+        ServiceResult<Void> result = userService.promoteToAdmin("legacy@example.com", "admin-kc-id");
 
         assertThat(result.isSuccess()).isFalse();
     }
 
     @Test
-    void changeUserRoleFailsWhenChangingOwnRole() {
+    void promoteToAdminFailsWhenPromotingSelf() {
         User user = new User();
+        user.setEmail("admin@example.com");
         user.setKeycloakId("admin-kc-id");
         user.setRole(UserRole.ADMIN);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(user));
 
-        ServiceResult<Void> result = userService.changeUserRole(1L, UserRole.USER, "admin-kc-id");
+        ServiceResult<Void> result = userService.promoteToAdmin("admin@example.com", "admin-kc-id");
 
         assertThat(result.isSuccess()).isFalse();
     }
 
     @Test
-    void changeUserRolePromotesUser() {
+    void promoteToAdminFailsWhenUserAlreadyAdmin() {
         User user = new User();
+        user.setEmail("other-admin@example.com");
+        user.setKeycloakId("other-kc-id");
+        user.setRole(UserRole.ADMIN);
+        when(userRepository.findByEmail("other-admin@example.com")).thenReturn(Optional.of(user));
+
+        ServiceResult<Void> result = userService.promoteToAdmin("other-admin@example.com", "admin-kc-id");
+
+        assertThat(result.isSuccess()).isFalse();
+    }
+
+    @Test
+    void promoteToAdminPromotesUser() {
+        authenticateAs("admin@example.com");
+        User user = new User();
+        user.setEmail("user@example.com");
         user.setKeycloakId("user-kc-id");
         user.setRole(UserRole.USER);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
 
-        ServiceResult<Void> result = userService.changeUserRole(1L, UserRole.ADMIN, "admin-kc-id");
+        ServiceResult<Void> result = userService.promoteToAdmin("user@example.com", "admin-kc-id");
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(user.getRole()).isEqualTo(UserRole.ADMIN);
@@ -283,16 +318,17 @@ class UserServiceTest {
     }
 
     @Test
-    void changeUserRoleFailsWhenKeycloakCallThrows() {
+    void promoteToAdminFailsWhenKeycloakCallThrows() {
         User user = new User();
+        user.setEmail("user@example.com");
         user.setKeycloakId("user-kc-id");
         user.setRole(UserRole.USER);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
         doThrow(new RuntimeException("boom"))
                 .when(keycloakAdminService)
                 .setUserRole("user-kc-id", UserRole.ADMIN);
 
-        ServiceResult<Void> result = userService.changeUserRole(1L, UserRole.ADMIN, "admin-kc-id");
+        ServiceResult<Void> result = userService.promoteToAdmin("user@example.com", "admin-kc-id");
 
         assertThat(result.isSuccess()).isFalse();
         verify(userRepository, never()).save(any());

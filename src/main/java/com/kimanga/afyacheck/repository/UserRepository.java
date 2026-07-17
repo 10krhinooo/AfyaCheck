@@ -39,10 +39,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT COUNT(u) FROM User u WHERE u.enabled = true")
     Long countByEnabledTrue();
 
-    // Count users by role
-    @Query("SELECT COUNT(u) FROM User u WHERE u.role = :role")
-    Long countByRole(@Param("role") UserRole role);
-
     // Find users by role
     @Query("SELECT u FROM User u WHERE u.role = :role")
     List<User> findByRole(@Param("role") UserRole role);
@@ -50,9 +46,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Count all enabled and verified users
     @Query("SELECT COUNT(u) FROM User u WHERE u.enabled = true AND u.emailVerified = true")
     Long countActiveUsers();
-
-    // Find all users ordered by creation date (for admin user management)
-    List<User> findAllByOrderByCreatedAtDesc();
 
     // Add this method to your existing UserRepository
     @Query("SELECT CONCAT(TO_CHAR(u.createdAt, 'Mon'), ' ', TO_CHAR(u.createdAt, 'YYYY')) as month, COUNT(u) " +

@@ -203,47 +203,51 @@ public class UserService {
     }
 
     /**
-     * Changes a user's realm role in Keycloak — the actual source of truth for authorization
-     * (see KeycloakAdminService). Only works for users synced from a real Keycloak login
-     * (keycloakId set by KeycloakUserSyncFilter); the legacy pre-Keycloak local-account rows
-     * have no Keycloak identity to update.
+     * Promotes an existing registered user to ADMIN by email — there's no user-listing page to
+     * pick an id from anymore (see AdminUsersPage removal), so email is the only identifier an
+     * admin actually has on hand. Only works for users synced from a real Keycloak login
+     * (keycloakId set by KeycloakUserSyncFilter on their first authenticated request); Keycloak
+     * is the actual source of truth for roles (see KeycloakAdminService), so the local `users`
+     * row is a best-effort mirror.
      */
-    public ServiceResult<Void> changeUserRole(Long userId, UserRole role, String actingAdminKeycloakId) {
-        Optional<User> userOptional = userRepository.findById(userId);
+    public ServiceResult<Void> promoteToAdmin(String email, String actingAdminKeycloakId) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isEmpty()) {
-            return ServiceResult.failure("User not found");
+            return ServiceResult.failure("No user found with that email");
         }
 
         User user = userOptional.get();
         if (user.getKeycloakId() == null) {
-            return ServiceResult.failure("This user has no Keycloak identity to update");
+            return ServiceResult.failure("This user hasn't signed in yet — ask them to log in once first");
         }
         if (user.getKeycloakId().equals(actingAdminKeycloakId)) {
-            return ServiceResult.failure("You cannot change your own role");
+            return ServiceResult.failure("You're already an admin");
+        }
+        if (user.getRole() == UserRole.ADMIN) {
+            return ServiceResult.failure(user.getEmail() + " is already an admin");
         }
 
-        UserRole previousRole = user.getRole();
         try {
-            keycloakAdminService.setUserRole(user.getKeycloakId(), role);
+            keycloakAdminService.setUserRole(user.getKeycloakId(), UserRole.ADMIN);
         } catch (Exception e) {
-            logger.error("Failed to change Keycloak role for user {}: {}", userId, e.getMessage());
+            logger.error("Failed to promote user {} to admin in Keycloak: {}", email, e.getMessage());
             return ServiceResult.failure("Could not update the user's role in Keycloak");
         }
 
         // Best-effort local reflection — KeycloakUserSyncFilter re-derives this from the
         // user's JWT on their next request regardless, since Keycloak is authoritative.
-        user.setRole(role);
+        user.setRole(UserRole.ADMIN);
         userRepository.save(user);
 
         AdminAuditLog log = new AdminAuditLog();
         log.setActorEmail(SecurityUtils.currentActorEmail());
-        log.setAction("CHANGE_USER_ROLE");
+        log.setAction("PROMOTE_TO_ADMIN");
         log.setTargetType("USER");
-        log.setTargetId(String.valueOf(userId));
-        log.setDetails(previousRole + " -> " + role);
+        log.setTargetId(email);
+        log.setDetails("USER -> ADMIN");
         adminAuditLogRepository.save(log);
 
-        return ServiceResult.success("User role updated to " + role, null);
+        return ServiceResult.success(user.getEmail() + " is now an admin", null);
     }
 
     /** Check if user is admin */

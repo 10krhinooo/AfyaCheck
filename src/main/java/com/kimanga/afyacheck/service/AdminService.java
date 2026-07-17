@@ -7,7 +7,6 @@ import com.kimanga.afyacheck.model.AdminAuditLog;
 import com.kimanga.afyacheck.model.Answer;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.model.User;
-import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.repository.*;
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import com.kimanga.afyacheck.util.SecurityUtils;
@@ -212,44 +211,6 @@ public class AdminService {
                     .collect(Collectors.toList());
         } catch (Exception e) {
             return List.of();
-        }
-    }
-
-    public List<UserDTO> getAllUsers() {
-        try {
-            return userRepository.findAllByOrderByCreatedAtDesc()
-                    .stream()
-                    .map(this::convertToUserDTO)
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            return List.of();
-        }
-    }
-
-    public Long getAdminUsersCount() {
-        try {
-            return userRepository.countByRole(UserRole.ADMIN);
-        } catch (Exception e) {
-            return 0L;
-        }
-    }
-
-    public ServiceResult<Void> toggleUserStatus(Long userId) {
-        try {
-            User user = userRepository.findById(userId).orElse(null);
-            if (user == null) {
-                return ServiceResult.failure("User not found");
-            }
-
-            user.setEnabled(!user.getEnabled());
-            userRepository.save(user);
-            logAction("TOGGLE_USER_STATUS", "USER", String.valueOf(userId), "enabled=" + user.getEnabled());
-
-            String message = user.getEnabled() ? "User activated successfully" : "User deactivated successfully";
-            return ServiceResult.success(message, null);
-
-        } catch (Exception e) {
-            return ServiceResult.failure("Error updating user status");
         }
     }
 

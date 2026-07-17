@@ -4,7 +4,6 @@ import com.kimanga.afyacheck.DTO.admin.AuditLogDTO;
 import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.DTO.admin.UserDTO;
 import com.kimanga.afyacheck.model.Question;
-import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.service.AdminService;
 import com.kimanga.afyacheck.service.UserService;
 import com.kimanga.afyacheck.DTO.ServiceResult;
@@ -16,7 +15,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,8 +29,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AdminController {
 
-    private final UserService userService;
     private final AdminService adminService;
+    private final UserService userService;
 
     public record DashboardResponse(
             long totalUsers,
@@ -70,38 +68,6 @@ public class AdminController {
 
     private long orZero(Long value) {
         return value != null ? value : 0;
-    }
-
-    public record UsersResponse(List<UserDTO> users, long totalUsers, long adminUsersCount) {}
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/users")
-    public ResponseEntity<?> users() {
-        try {
-            List<UserDTO> allUsers = adminService.getAllUsers();
-            long totalUsers = orZero(adminService.getDashboardStats().getTotalUsers());
-            long adminUsersCount = orZero(adminService.getAdminUsersCount());
-            return ResponseEntity.ok(new UsersResponse(allUsers, totalUsers, adminUsersCount));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Unable to load users data"));
-        }
-    }
-
-    public record ToggleStatusRequest(Long userId) {}
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/users/toggle-status")
-    public ResponseEntity<?> toggleUserStatus(@RequestBody ToggleStatusRequest request) {
-        try {
-            ServiceResult<Void> result = adminService.toggleUserStatus(request.userId());
-            return result.isSuccess()
-                    ? ResponseEntity.ok(Map.of("message", result.getMessage()))
-                    : ResponseEntity.badRequest().body(Map.of("error", result.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error updating user status"));
-        }
     }
 
     public record QuestionsResponse(
@@ -164,18 +130,6 @@ public class AdminController {
         }
     }
 
-    public record ChangeRoleRequest(Long userId, UserRole role) {}
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/users/role")
-    public ResponseEntity<?> changeUserRole(@RequestBody ChangeRoleRequest request) {
-        ServiceResult<Void> result =
-                userService.changeUserRole(request.userId(), request.role(), currentActorKeycloakId());
-        Map<String, Object> body = new HashMap<>();
-        body.put(result.isSuccess() ? "message" : "error", result.getMessage());
-        return result.isSuccess() ? ResponseEntity.ok(body) : ResponseEntity.badRequest().body(body);
-    }
-
     public record AuditLogResponse(List<AuditLogDTO> entries) {}
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -187,6 +141,16 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Unable to load audit log"));
         }
+    }
+
+    public record PromoteAdminRequest(String email) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/users/promote")
+    public ResponseEntity<?> promoteToAdmin(@RequestBody PromoteAdminRequest request) {
+        ServiceResult<Void> result = userService.promoteToAdmin(request.email(), currentActorKeycloakId());
+        Map<String, String> body = Map.of(result.isSuccess() ? "message" : "error", result.getMessage());
+        return result.isSuccess() ? ResponseEntity.ok(body) : ResponseEntity.badRequest().body(body);
     }
 
     private String currentActorKeycloakId() {
