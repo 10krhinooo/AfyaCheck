@@ -55,7 +55,7 @@
 <tr>
 <td style="padding-top: 24px; text-align: center; font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #4a564f;">
 AfyaCheck &middot; Confidential HIV/STI risk assessment<br>
-This is an automated message &mdash; please don&rsquo;t reply directly to this email.
+This is an automated message. Please don&rsquo;t reply directly to this email.
 </td>
 </tr>
 </table>
