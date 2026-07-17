@@ -91,6 +91,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r ${{ matrix.service }}/requirements.txt
 
+      - name: Audit dependencies for known CVEs
+        run: |
+          pip install pip-audit
+          pip-audit -r ${{ matrix.service }}/requirements.txt
+
       # No pytest suite exists yet for these services — this is a best-effort
       # syntax/import sanity check. Replace with `pytest` once tests are added.
       - name: Sanity-check ml-service entrypoint

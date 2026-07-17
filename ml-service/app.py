@@ -11,6 +11,7 @@ import re
 import logging
 import json
 import joblib
+import hashlib
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,10 +24,16 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+# This service is only ever called server-to-server (Spring Boot's MLService via RestTemplate,
+# see application.properties' ml.risk.service.url) -- it's not meant to be reachable directly
+# from a browser. allow_credentials=True can't legally pair with a wildcard origin per the CORS
+# spec anyway (browsers reject it), so this was already a no-op protection; disabling credentials
+# here removes the only combination that would have quietly widened this if anyone later scoped
+# allow_origins down instead of removing the wildcard.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -126,6 +133,42 @@ class HIVRiskPredictor:
         logger.info(f"Model loaded: {self.model is not None}")
         logger.info(f"Feature columns: {len(self.feature_columns)}")
 
+    def _verify_model_integrity(self, model_path: str) -> bool:
+        """
+        joblib/pickle both deserialize via Python's pickle protocol, which can execute
+        arbitrary code if the model file is ever replaced by something other than the model
+        this service shipped with (compromised build artifact, supply-chain tampering, a
+        writable model directory). A sidecar '<model_path>.sha256' file -- containing just the
+        expected hex digest, generated at build/release time -- lets us detect that before
+        deserializing. Its absence only warns rather than blocks, since not every deployment
+        has generated one yet; once one exists for a given model file, a mismatch blocks the load.
+        """
+        checksum_path = model_path + '.sha256'
+        if not os.path.exists(checksum_path):
+            logger.warning(
+                f"No checksum file at {checksum_path} -- skipping integrity check for {model_path}. "
+                f"Generate one with `sha256sum {model_path} | cut -d' ' -f1 > {checksum_path}`."
+            )
+            return True
+
+        with open(checksum_path, 'r') as f:
+            expected_digest = f.read().strip().split()[0]
+
+        sha256 = hashlib.sha256()
+        with open(model_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(65536), b''):
+                sha256.update(chunk)
+        actual_digest = sha256.hexdigest()
+
+        if actual_digest != expected_digest:
+            logger.error(
+                f"Model integrity check FAILED for {model_path}: expected {expected_digest}, "
+                f"got {actual_digest}. Refusing to load a model file that doesn't match its "
+                f"known-good checksum."
+            )
+            return False
+        return True
+
     def load_model(self, model_path: str):
         """Load the trained ML model using multiple formats"""
         try:
@@ -141,9 +184,14 @@ class HIVRiskPredictor:
                     logger.warning(f"Failed to load as XGBoost native format: {e}")
 
             # Try joblib format
+            # joblib.load deserializes via pickle under the hood. This file is a build-time
+            # artifact from our own training pipeline, not user/request input, and is now
+            # checksum-verified above (_verify_model_integrity) before we deserialize it.
             joblib_path = model_path.replace('.pkl', '.joblib').replace('.json', '.joblib')
             if os.path.exists(joblib_path):
                 try:
+                    if not self._verify_model_integrity(joblib_path):
+                        raise ValueError(f"integrity check failed for {joblib_path}")
                     import joblib
                     model = joblib.load(joblib_path)
                     logger.info(f"Model loaded successfully from {joblib_path} using joblib")
@@ -152,8 +200,12 @@ class HIVRiskPredictor:
                     logger.warning(f"Failed to load as joblib: {e}")
 
             # Try legacy pickle format
+            # Same trust boundary as the joblib branch above: this is our own build artifact,
+            # not attacker-reachable input, and checksum-verified before deserialization.
             if os.path.exists(model_path):
                 try:
+                    if not self._verify_model_integrity(model_path):
+                        raise ValueError(f"integrity check failed for {model_path}")
                     import pickle
                     with open(model_path, 'rb') as f:
                         model_data = pickle.load(f)

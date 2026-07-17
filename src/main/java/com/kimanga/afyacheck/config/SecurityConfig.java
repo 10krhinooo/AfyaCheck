@@ -102,6 +102,24 @@ public class SecurityConfig {
                                 .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
                         )
                         .frameOptions(frame -> frame.sameOrigin())
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31536000)
+                        )
+                        // script-src/connect-src allow maps.googleapis.com for the health-centers
+                        // Maps JS embed (see HealthCenterController, useGoogleMaps.ts); img-src
+                        // covers the map tiles Maps JS pulls from Google's CDN domains.
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; "
+                                        + "script-src 'self' https://maps.googleapis.com; "
+                                        + "style-src 'self' 'unsafe-inline'; "
+                                        + "img-src 'self' data: https://*.googleapis.com https://*.gstatic.com https://*.ggpht.com; "
+                                        + "font-src 'self' data:; "
+                                        + "connect-src 'self' https://maps.googleapis.com; "
+                                        + "frame-ancestors 'self'; "
+                                        + "base-uri 'self'; "
+                                        + "form-action 'self'"
+                        ))
                 );
 
         return http.build();
