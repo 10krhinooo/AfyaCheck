@@ -253,6 +253,29 @@ class SessionServiceTest {
     }
 
     @Test
+    void deleteSessionDataReturnsFalseWhenSessionNotFound() {
+        when(sessionRepository.findBySessionId("sid-missing")).thenReturn(Optional.empty());
+
+        boolean result = sessionService.deleteSessionData("sid-missing");
+
+        assertThat(result).isFalse();
+        verify(answerRepository, never()).deleteBySession(any());
+    }
+
+    @Test
+    void deleteSessionDataDeletesAnswersAssessmentsAndSession() {
+        Session session = validSession("sid-18");
+        when(sessionRepository.findBySessionId("sid-18")).thenReturn(Optional.of(session));
+
+        boolean result = sessionService.deleteSessionData("sid-18");
+
+        assertThat(result).isTrue();
+        verify(answerRepository).deleteBySession(session);
+        verify(riskAssessmentRepository).deleteBySession_SessionId("sid-18");
+        verify(sessionRepository).delete(session);
+    }
+
+    @Test
     void getLatestRiskAssessmentDelegatesToRepository() {
         RiskAssessment ra = new RiskAssessment();
         when(riskAssessmentRepository.findLatestBySessionId("sid-17")).thenReturn(Optional.of(ra));
