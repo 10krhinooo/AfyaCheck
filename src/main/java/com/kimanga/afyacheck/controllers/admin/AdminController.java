@@ -3,6 +3,7 @@ package com.kimanga.afyacheck.controllers.admin;
 import com.kimanga.afyacheck.DTO.admin.AuditLogDTO;
 import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.DTO.admin.UserDTO;
+import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.service.AdminService;
@@ -161,6 +162,63 @@ public class AdminController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error updating question"));
+        }
+    }
+
+    public record HealthCentersResponse(List<HealthCenter> healthCenters) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/health-centers")
+    public ResponseEntity<?> healthCenters() {
+        try {
+            return ResponseEntity.ok(new HealthCentersResponse(adminService.getAllHealthCenters()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Unable to load health centers"));
+        }
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/health-centers/add")
+    public ResponseEntity<?> addHealthCenter(@RequestBody HealthCenter healthCenter) {
+        try {
+            ServiceResult<HealthCenter> result = adminService.addHealthCenter(healthCenter);
+            return result.isSuccess()
+                    ? ResponseEntity.ok(result.getData())
+                    : ResponseEntity.badRequest().body(Map.of("error", result.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error adding health center"));
+        }
+    }
+
+    public record DeleteHealthCenterRequest(Long healthCenterId) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/health-centers/delete")
+    public ResponseEntity<?> deleteHealthCenter(@RequestBody DeleteHealthCenterRequest request) {
+        try {
+            ServiceResult<Void> result = adminService.deleteHealthCenter(request.healthCenterId());
+            return result.isSuccess()
+                    ? ResponseEntity.ok(Map.of("message", result.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("error", result.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error deleting health center"));
+        }
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/health-centers/update")
+    public ResponseEntity<?> updateHealthCenter(@RequestParam Long healthCenterId, @RequestBody HealthCenter healthCenter) {
+        try {
+            ServiceResult<HealthCenter> result = adminService.updateHealthCenter(healthCenterId, healthCenter);
+            return result.isSuccess()
+                    ? ResponseEntity.ok(result.getData())
+                    : ResponseEntity.badRequest().body(Map.of("error", result.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error updating health center"));
         }
     }
 

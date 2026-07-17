@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { HealthCenter } from './types'
+import { apiFetch } from '../../lib/api-client'
+import type { CuratedHealthCenterDto, HealthCenter } from './types'
 
 type SearchStatus = 'idle' | 'locating' | 'searching' | 'done' | 'error'
 
@@ -25,50 +26,78 @@ export function useNearbyHealthCenters(mapsReady: boolean) {
     setAttempt((a) => a + 1)
   }, [])
 
+  const searchLivePlaces = useCallback((here: { lat: number; lng: number }) => {
+    const service = new google.maps.places.PlacesService(document.createElement('div'))
+    service.nearbySearch(
+      { location: here, radius: 10000, type: 'hospital' },
+      (results, placesStatus) => {
+        if (placesStatus === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+          setCenters([])
+          setStatus('done')
+          return
+        }
+        if (placesStatus !== google.maps.places.PlacesServiceStatus.OK || !results) {
+          setError('We couldn’t search for nearby health centers right now. Check your connection and try again.')
+          setStatus('error')
+          return
+        }
+
+        const found: HealthCenter[] = results
+          .filter((r) => r.geometry?.location)
+          .map((r) => {
+            const location = { lat: r.geometry!.location!.lat(), lng: r.geometry!.location!.lng() }
+            return {
+              id: r.place_id ?? r.name ?? crypto.randomUUID(),
+              name: r.name ?? 'Unnamed health center',
+              address: r.vicinity ?? 'Address unavailable',
+              lat: location.lat,
+              lng: location.lng,
+              distanceKm: Math.round(distanceKm(here, location) * 10) / 10,
+            }
+          })
+          .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0))
+
+        setCenters(found)
+        setStatus('done')
+      },
+    )
+  }, [])
+
   useEffect(() => {
     if (!mapsReady) return
 
     setStatus('locating')
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const here = { lat: position.coords.latitude, lng: position.coords.longitude }
         setOrigin(here)
         setStatus('searching')
 
-        const service = new google.maps.places.PlacesService(document.createElement('div'))
-        service.nearbySearch(
-          { location: here, radius: 10000, type: 'hospital' },
-          (results, placesStatus) => {
-            if (placesStatus === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-              setCenters([])
-              setStatus('done')
-              return
-            }
-            if (placesStatus !== google.maps.places.PlacesServiceStatus.OK || !results) {
-              setError('We couldn’t search for nearby health centers right now. Check your connection and try again.')
-              setStatus('error')
-              return
-            }
-
-            const found: HealthCenter[] = results
-              .filter((r) => r.geometry?.location)
-              .map((r) => {
-                const location = { lat: r.geometry!.location!.lat(), lng: r.geometry!.location!.lng() }
-                return {
-                  id: r.place_id ?? r.name ?? crypto.randomUUID(),
-                  name: r.name ?? 'Unnamed health center',
-                  address: r.vicinity ?? 'Address unavailable',
-                  lat: location.lat,
-                  lng: location.lng,
-                  distanceKm: Math.round(distanceKm(here, location) * 10) / 10,
-                }
-              })
-              .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0))
-
+        // Admin-curated centers are the preferred source (vetted, richer detail); fall back
+        // to a live Places search when none are curated near this location yet.
+        try {
+          const curated = await apiFetch<CuratedHealthCenterDto[]>(
+            `/api/health-centers/nearby?lat=${here.lat}&lng=${here.lng}`,
+          )
+          if (curated.length > 0) {
+            const found: HealthCenter[] = curated.map((c) => ({
+              id: String(c.id),
+              name: c.name,
+              address: c.address ?? 'Address unavailable',
+              phone: c.phone ?? undefined,
+              lat: c.latitude,
+              lng: c.longitude,
+              distanceKm: Math.round(distanceKm(here, { lat: c.latitude, lng: c.longitude }) * 10) / 10,
+            }))
             setCenters(found)
             setStatus('done')
-          },
-        )
+            return
+          }
+        } catch {
+          // Curated lookup failing shouldn't block the live fallback below.
+        }
+
+        searchLivePlaces(here)
       },
       () => {
         setError(
@@ -77,7 +106,7 @@ export function useNearbyHealthCenters(mapsReady: boolean) {
         setStatus('error')
       },
     )
-  }, [mapsReady, attempt])
+  }, [mapsReady, attempt, searchLivePlaces])
 
   return { status, centers, origin, error, retry }
 }
