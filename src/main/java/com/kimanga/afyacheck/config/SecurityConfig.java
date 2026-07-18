@@ -67,6 +67,11 @@ public class SecurityConfig {
                                 "/assets/**",
                                 "/favicon.svg",
                                 "/index.html",
+                                // /app/** forwards here (see WebConfig) — needed alongside
+                                // "/app/**" for the same reason "/index.html" is listed
+                                // separately: Spring Security re-evaluates on the internal
+                                // FORWARD dispatch too.
+                                "/app-shell.html",
                                 // Prerendered marketing/legal pages (see WebConfig) — public by nature,
                                 // same as "/" above. Both the clean path and its forward:/*.html target
                                 // are needed: Spring Security re-evaluates on the internal FORWARD
