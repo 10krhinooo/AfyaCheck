@@ -3,15 +3,9 @@ import { Menu, X, LogOut } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth/AuthContext'
 import { login, logout } from '../lib/auth/keycloak'
+import { useTranslation } from '../lib/i18n'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import { StatusMessage } from './StatusMessage'
-
-const baseLinks = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/app/questionnaire', label: 'Assessment' },
-  { to: '/app/health-centers', label: 'Health Centers' },
-  { to: '/about', label: 'About' },
-  { to: '/faq', label: 'FAQ' },
-]
 
 function NavItem({
   to,
@@ -45,17 +39,32 @@ function NavItem({
 export function NavBar() {
   const { pathname } = useLocation()
   const { isAuthenticated, isAdmin } = useAuth()
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
   // Silent OIDC redirect screen — no chrome worth showing (see routes.tsx).
   if (pathname === '/app/callback') return null
 
-  const links = [
-    ...baseLinks,
-    ...(isAuthenticated ? [{ to: '/app/dashboard', label: 'Dashboard' }] : []),
-    ...(isAdmin ? [{ to: '/app/admin', label: 'Admin' }] : []),
+  const baseLinks = [
+    { to: '/', label: t('nav.home'), end: true },
+    { to: '/app/questionnaire', label: t('nav.assessment') },
+    { to: '/app/health-centers', label: t('nav.healthCenters') },
+    { to: '/about', label: t('nav.about') },
+    { to: '/faq', label: t('nav.faq') },
   ]
+
+  // The admin console (AdminNav) has its own internal navigation (Dashboard/Admins/Questions/
+  // Audit log) — the public marketing links here are just clutter while managing the system,
+  // so this masthead shrinks to just sign-out + the logo (rendered separately below).
+  const isAdminRoute = pathname.startsWith('/app/admin')
+  const links = isAdminRoute
+    ? []
+    : [
+        ...baseLinks,
+        ...(isAuthenticated ? [{ to: '/app/dashboard', label: t('nav.dashboard') }] : []),
+        ...(isAdmin ? [{ to: '/app/admin', label: t('nav.admin') }] : []),
+      ]
 
   async function handleSignIn() {
     setAuthError(null)
@@ -75,6 +84,36 @@ export function NavBar() {
     }
   }
 
+  if (isAdminRoute) {
+    return (
+      <header className="border-b border-teal-100/60">
+        <div className="flex w-full items-center justify-between gap-4 px-6 py-5 sm:px-10 lg:px-16">
+          <a href="/" className="font-display text-xl text-teal-700">
+            AfyaCheck
+          </a>
+
+          <div className="flex items-center gap-4">
+            <LanguageSwitcher />
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-ink"
+            >
+              <LogOut aria-hidden="true" size={16} />
+              {t('nav.signOut')}
+            </button>
+          </div>
+        </div>
+
+        {authError && (
+          <div className="border-t border-teal-100/60 px-6 py-3 sm:px-10 lg:px-16">
+            <StatusMessage tone="error">{authError}</StatusMessage>
+          </div>
+        )}
+      </header>
+    )
+  }
+
   return (
     <header className="border-b border-teal-100/60">
       <div className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-4 px-6 py-5">
@@ -88,7 +127,8 @@ export function NavBar() {
           ))}
         </nav>
 
-        <div className="hidden justify-self-end md:block">
+        <div className="hidden items-center gap-4 justify-self-end md:flex">
+          <LanguageSwitcher />
           {isAuthenticated ? (
             <button
               type="button"
@@ -96,7 +136,7 @@ export function NavBar() {
               className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-ink"
             >
               <LogOut aria-hidden="true" size={16} />
-              Sign out
+              {t('nav.signOut')}
             </button>
           ) : (
             <button
@@ -104,7 +144,7 @@ export function NavBar() {
               onClick={handleSignIn}
               className="text-sm font-medium text-ink-soft hover:text-ink"
             >
-              Sign in
+              {t('nav.signIn')}
             </button>
           )}
         </div>
@@ -113,7 +153,7 @@ export function NavBar() {
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          aria-label={open ? 'Close menu' : 'Open menu'}
+          aria-label={open ? t('nav.closeMenu') : t('nav.openMenu')}
           className="col-start-3 justify-self-end text-ink-soft hover:text-ink md:hidden"
         >
           {open ? <X aria-hidden="true" size={22} /> : <Menu aria-hidden="true" size={22} />}
@@ -132,6 +172,7 @@ export function NavBar() {
                 onClick={() => setOpen(false)}
               />
             ))}
+            <LanguageSwitcher />
             {isAuthenticated ? (
               <button
                 type="button"
@@ -139,7 +180,7 @@ export function NavBar() {
                 className="inline-flex items-center gap-1.5 text-left text-sm font-medium text-ink-soft hover:text-ink"
               >
                 <LogOut aria-hidden="true" size={16} />
-                Sign out
+                {t('nav.signOut')}
               </button>
             ) : (
               <button
@@ -150,7 +191,7 @@ export function NavBar() {
                 }}
                 className="text-left text-sm font-medium text-ink-soft hover:text-ink"
               >
-                Sign in
+                {t('nav.signIn')}
               </button>
             )}
           </div>
