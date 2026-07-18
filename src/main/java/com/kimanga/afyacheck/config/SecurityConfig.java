@@ -94,6 +94,10 @@ public class SecurityConfig {
                                 "/api/config/**"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // API docs describe admin endpoint shapes too, so gate the same as
+                        // /api/admin/** rather than leaving the whole API contract public.
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                        .hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
