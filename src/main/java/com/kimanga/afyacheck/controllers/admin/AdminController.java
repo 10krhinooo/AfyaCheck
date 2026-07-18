@@ -1,8 +1,10 @@
 package com.kimanga.afyacheck.controllers.admin;
 
+import com.kimanga.afyacheck.DTO.admin.AuditLogDTO;
 import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.DTO.admin.UserDTO;
 import com.kimanga.afyacheck.model.Question;
+import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.service.AdminService;
 import com.kimanga.afyacheck.service.UserService;
 import com.kimanga.afyacheck.DTO.ServiceResult;
@@ -10,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -160,14 +164,33 @@ public class AdminController {
         }
     }
 
-    public record MakeAdminRequest(String email) {}
+    public record ChangeRoleRequest(Long userId, UserRole role) {}
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/make-admin")
-    public ResponseEntity<?> makeUserAdmin(@RequestBody MakeAdminRequest request) {
-        ServiceResult<Void> result = userService.makeAdmin(request.email());
+    @PostMapping("/users/role")
+    public ResponseEntity<?> changeUserRole(@RequestBody ChangeRoleRequest request) {
+        ServiceResult<Void> result =
+                userService.changeUserRole(request.userId(), request.role(), currentActorKeycloakId());
         Map<String, Object> body = new HashMap<>();
         body.put(result.isSuccess() ? "message" : "error", result.getMessage());
         return result.isSuccess() ? ResponseEntity.ok(body) : ResponseEntity.badRequest().body(body);
+    }
+
+    public record AuditLogResponse(List<AuditLogDTO> entries) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/audit-log")
+    public ResponseEntity<?> auditLog() {
+        try {
+            return ResponseEntity.ok(new AuditLogResponse(adminService.getRecentAuditLog()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Unable to load audit log"));
+        }
+    }
+
+    private String currentActorKeycloakId() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication instanceof JwtAuthenticationToken jwtAuth ? jwtAuth.getToken().getSubject() : null;
     }
 }

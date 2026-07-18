@@ -2,10 +2,12 @@ package com.kimanga.afyacheck.service;
 
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import com.kimanga.afyacheck.mail.EmailService;
+import com.kimanga.afyacheck.model.AdminAuditLog;
 import com.kimanga.afyacheck.model.PasswordResetToken;
 import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.model.VerificationToken;
+import com.kimanga.afyacheck.repository.AdminAuditLogRepository;
 import com.kimanga.afyacheck.repository.PasswordResetTokenRepository;
 import com.kimanga.afyacheck.repository.UserRepository;
 import com.kimanga.afyacheck.repository.VerificationTokenRepository;
@@ -21,6 +23,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -32,6 +35,8 @@ class UserServiceTest {
     private PasswordResetTokenRepository passwordResetTokenRepository;
     private PasswordEncoder passwordEncoder;
     private EmailService emailService;
+    private KeycloakAdminService keycloakAdminService;
+    private AdminAuditLogRepository adminAuditLogRepository;
     private UserService userService;
 
     @BeforeEach
@@ -41,8 +46,11 @@ class UserServiceTest {
         passwordResetTokenRepository = mock(PasswordResetTokenRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         emailService = mock(EmailService.class);
+        keycloakAdminService = mock(KeycloakAdminService.class);
+        adminAuditLogRepository = mock(AdminAuditLogRepository.class);
         userService = new UserService(userRepository, verificationTokenRepository,
-                passwordResetTokenRepository, passwordEncoder, emailService);
+                passwordResetTokenRepository, passwordEncoder, emailService,
+                keycloakAdminService, adminAuditLogRepository);
     }
 
     private User validNewUser() {
@@ -229,23 +237,65 @@ class UserServiceTest {
     }
 
     @Test
-    void makeAdminFailsWhenUserNotFound() {
-        when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
-        ServiceResult<Void> result = userService.makeAdmin("missing@example.com");
+    void changeUserRoleFailsWhenUserNotFound() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        ServiceResult<Void> result = userService.changeUserRole(1L, UserRole.ADMIN, "admin-kc-id");
         assertThat(result.isSuccess()).isFalse();
     }
 
     @Test
-    void makeAdminPromotesUser() {
+    void changeUserRoleFailsWhenUserHasNoKeycloakIdentity() {
         User user = new User();
         user.setRole(UserRole.USER);
-        when(userRepository.findByEmail("x@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
-        ServiceResult<Void> result = userService.makeAdmin("x@example.com");
+        ServiceResult<Void> result = userService.changeUserRole(1L, UserRole.ADMIN, "admin-kc-id");
+
+        assertThat(result.isSuccess()).isFalse();
+    }
+
+    @Test
+    void changeUserRoleFailsWhenChangingOwnRole() {
+        User user = new User();
+        user.setKeycloakId("admin-kc-id");
+        user.setRole(UserRole.ADMIN);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        ServiceResult<Void> result = userService.changeUserRole(1L, UserRole.USER, "admin-kc-id");
+
+        assertThat(result.isSuccess()).isFalse();
+    }
+
+    @Test
+    void changeUserRolePromotesUser() {
+        User user = new User();
+        user.setKeycloakId("user-kc-id");
+        user.setRole(UserRole.USER);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        ServiceResult<Void> result = userService.changeUserRole(1L, UserRole.ADMIN, "admin-kc-id");
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(user.getRole()).isEqualTo(UserRole.ADMIN);
+        verify(keycloakAdminService).setUserRole("user-kc-id", UserRole.ADMIN);
         verify(userRepository).save(user);
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
+    }
+
+    @Test
+    void changeUserRoleFailsWhenKeycloakCallThrows() {
+        User user = new User();
+        user.setKeycloakId("user-kc-id");
+        user.setRole(UserRole.USER);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        doThrow(new RuntimeException("boom"))
+                .when(keycloakAdminService)
+                .setUserRole("user-kc-id", UserRole.ADMIN);
+
+        ServiceResult<Void> result = userService.changeUserRole(1L, UserRole.ADMIN, "admin-kc-id");
+
+        assertThat(result.isSuccess()).isFalse();
+        verify(userRepository, never()).save(any());
     }
 
     @Test

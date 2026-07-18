@@ -41,6 +41,9 @@ jobs:
       # CI-only dummy value — spring.mail.password has no default and is
       # required for the app to start (see application.properties).
       MAIL_PASSWORD: ci-test-mail-password
+      # CI-only dummy value — keycloak.admin.client-secret has no default and is
+      # required for the app to start (see application.properties).
+      KEYCLOAK_BACKEND_CLIENT_SECRET: ci-test-keycloak-client-secret
 
     steps:
       - uses: actions/checkout@v4

@@ -3,6 +3,7 @@ package com.kimanga.afyacheck.controllers.admin;
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.model.Question;
+import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.service.AdminService;
 import com.kimanga.afyacheck.service.UserService;
 import org.junit.jupiter.api.Test;
@@ -214,19 +215,23 @@ class AdminControllerTest {
     }
 
     @Test
-    void makeUserAdminSucceeds() {
-        when(userService.makeAdmin("a@b.com")).thenReturn(ServiceResult.success("promoted", null));
+    void changeUserRoleSucceeds() {
+        when(userService.changeUserRole(1L, UserRole.ADMIN, null))
+                .thenReturn(ServiceResult.success("User role updated to ADMIN", null));
 
-        ResponseEntity<?> response = controller.makeUserAdmin(new AdminController.MakeAdminRequest("a@b.com"));
+        ResponseEntity<?> response =
+                controller.changeUserRole(new AdminController.ChangeRoleRequest(1L, UserRole.ADMIN));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void makeUserAdminHandlesFailure() {
-        when(userService.makeAdmin("a@b.com")).thenReturn(ServiceResult.failure("not found"));
+    void changeUserRoleHandlesFailure() {
+        when(userService.changeUserRole(1L, UserRole.ADMIN, null))
+                .thenReturn(ServiceResult.failure("User not found"));
 
-        ResponseEntity<?> response = controller.makeUserAdmin(new AdminController.MakeAdminRequest("a@b.com"));
+        ResponseEntity<?> response =
+                controller.changeUserRole(new AdminController.ChangeRoleRequest(1L, UserRole.ADMIN));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }

@@ -1,15 +1,20 @@
 package com.kimanga.afyacheck.service;
 
 import com.kimanga.afyacheck.mail.EmailService;
+import com.kimanga.afyacheck.model.AdminAuditLog;
 import com.kimanga.afyacheck.model.AuthProvider;
 import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.model.VerificationToken;
 import com.kimanga.afyacheck.model.PasswordResetToken;
+import com.kimanga.afyacheck.repository.AdminAuditLogRepository;
 import com.kimanga.afyacheck.repository.UserRepository;
 import com.kimanga.afyacheck.repository.VerificationTokenRepository;
 import com.kimanga.afyacheck.repository.PasswordResetTokenRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.kimanga.afyacheck.util.AlertMessage;
+import com.kimanga.afyacheck.util.SecurityUtils;
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -27,11 +32,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserService {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+
     private final UserRepository userRepository;
     private final VerificationTokenRepository verificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final KeycloakAdminService keycloakAdminService;
+    private final AdminAuditLogRepository adminAuditLogRepository;
 
     /** Register user and send verification email */
     public ServiceResult<User> register(User user) {
@@ -193,18 +202,48 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
-    /** Make a user admin by email */
-    public ServiceResult<Void> makeAdmin(String email) {
-        Optional<User> userOptional = userRepository.findByEmail(email);
+    /**
+     * Changes a user's realm role in Keycloak — the actual source of truth for authorization
+     * (see KeycloakAdminService). Only works for users synced from a real Keycloak login
+     * (keycloakId set by KeycloakUserSyncFilter); the legacy pre-Keycloak local-account rows
+     * have no Keycloak identity to update.
+     */
+    public ServiceResult<Void> changeUserRole(Long userId, UserRole role, String actingAdminKeycloakId) {
+        Optional<User> userOptional = userRepository.findById(userId);
         if (userOptional.isEmpty()) {
             return ServiceResult.failure("User not found");
         }
 
         User user = userOptional.get();
-        user.setRole(UserRole.ADMIN);
+        if (user.getKeycloakId() == null) {
+            return ServiceResult.failure("This user has no Keycloak identity to update");
+        }
+        if (user.getKeycloakId().equals(actingAdminKeycloakId)) {
+            return ServiceResult.failure("You cannot change your own role");
+        }
+
+        UserRole previousRole = user.getRole();
+        try {
+            keycloakAdminService.setUserRole(user.getKeycloakId(), role);
+        } catch (Exception e) {
+            logger.error("Failed to change Keycloak role for user {}: {}", userId, e.getMessage());
+            return ServiceResult.failure("Could not update the user's role in Keycloak");
+        }
+
+        // Best-effort local reflection — KeycloakUserSyncFilter re-derives this from the
+        // user's JWT on their next request regardless, since Keycloak is authoritative.
+        user.setRole(role);
         userRepository.save(user);
 
-        return ServiceResult.success("User promoted to admin successfully", null);
+        AdminAuditLog log = new AdminAuditLog();
+        log.setActorEmail(SecurityUtils.currentActorEmail());
+        log.setAction("CHANGE_USER_ROLE");
+        log.setTargetType("USER");
+        log.setTargetId(String.valueOf(userId));
+        log.setDetails(previousRole + " -> " + role);
+        adminAuditLogRepository.save(log);
+
+        return ServiceResult.success("User role updated to " + role, null);
     }
 
     /** Check if user is admin */

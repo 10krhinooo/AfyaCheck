@@ -30,10 +30,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Only runs client-side (useEffect never fires during vite-react-ssg's build-time
     // prerender of "/"), so it's safe for getUserManager() to touch window here.
     const userManager = getUserManager()
-    userManager.getUser().then((u) => {
-      setUser(u && !u.expired ? u : null)
-      setIsLoading(false)
-    })
+    userManager
+      .getUser()
+      .then((u) => setUser(u && !u.expired ? u : null))
+      .catch(() => setUser(null))
+      .finally(() => setIsLoading(false))
 
     const onLoaded = (u: User) => setUser(u)
     const onUnloaded = () => setUser(null)

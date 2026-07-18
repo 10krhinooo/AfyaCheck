@@ -1,5 +1,6 @@
 package com.kimanga.afyacheck.service;
 
+import com.kimanga.afyacheck.DTO.admin.AuditLogDTO;
 import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.DTO.admin.UserDTO;
 import com.kimanga.afyacheck.model.AdminAuditLog;
@@ -9,10 +10,8 @@ import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.repository.*;
 import com.kimanga.afyacheck.DTO.ServiceResult;
+import com.kimanga.afyacheck.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -331,7 +330,7 @@ public class AdminService {
 
     private void logAction(String action, String targetType, String targetId, String details) {
         AdminAuditLog log = new AdminAuditLog();
-        log.setActorEmail(currentActorEmail());
+        log.setActorEmail(SecurityUtils.currentActorEmail());
         log.setAction(action);
         log.setTargetType(targetType);
         log.setTargetId(targetId);
@@ -339,15 +338,22 @@ public class AdminService {
         adminAuditLogRepository.save(log);
     }
 
-    private String currentActorEmail() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            String email = jwtAuth.getToken().getClaimAsString("email");
-            if (email != null) {
-                return email;
-            }
-        }
-        return "unknown";
+    public List<AuditLogDTO> getRecentAuditLog() {
+        return adminAuditLogRepository.findTop100ByOrderByCreatedAtDesc().stream()
+                .map(this::convertToAuditLogDTO)
+                .collect(Collectors.toList());
+    }
+
+    private AuditLogDTO convertToAuditLogDTO(AdminAuditLog log) {
+        AuditLogDTO dto = new AuditLogDTO();
+        dto.setId(log.getId());
+        dto.setActorEmail(log.getActorEmail());
+        dto.setAction(log.getAction());
+        dto.setTargetType(log.getTargetType());
+        dto.setTargetId(log.getTargetId());
+        dto.setDetails(log.getDetails());
+        dto.setCreatedAt(log.getCreatedAt());
+        return dto;
     }
 
     // Answer Statistics - Simplified without any session dependencies

@@ -8,6 +8,7 @@
 #   Realm "afyacheck" and client "afyacheck-spa" are imported automatically from
 #   keycloak/realm-export.json. Frontend dev server (vite) already proxies /api/** to
 #   :8080 — the SPA talks to Keycloak directly on :8180 (see frontend/src/lib/auth/keycloak.ts).
+#   Seed admin login (app, not Keycloak console): admin@afyacheck.com / $SEED_ADMIN_PASSWORD
 services:
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
@@ -15,6 +16,10 @@ services:
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      KEYCLOAK_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
     ports:
       - "8180:8080"
     volumes:

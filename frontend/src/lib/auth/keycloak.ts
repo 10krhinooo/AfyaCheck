@@ -27,12 +27,31 @@ export function getUserManager(): UserManager {
   return instance
 }
 
+// signinRedirect()/signoutRedirect() both fetch Keycloak's OIDC discovery document
+// (issuer/.well-known/...) before navigating the browser away, so a down/unreachable Keycloak
+// rejects the promise instead of leaving the user on a browser-level connection-refused page —
+// callers should catch this.
+export class AuthServiceUnavailableError extends Error {
+  constructor() {
+    super('The authentication service is unavailable right now. Please try again shortly.')
+    this.name = 'AuthServiceUnavailableError'
+  }
+}
+
 export async function login(returnTo?: string) {
-  await getUserManager().signinRedirect({ state: { returnTo: returnTo ?? '/app/dashboard' } })
+  try {
+    await getUserManager().signinRedirect({ state: { returnTo: returnTo ?? '/app/dashboard' } })
+  } catch {
+    throw new AuthServiceUnavailableError()
+  }
 }
 
 export async function logout() {
-  await getUserManager().signoutRedirect()
+  try {
+    await getUserManager().signoutRedirect()
+  } catch {
+    throw new AuthServiceUnavailableError()
+  }
 }
 
 export async function getAccessToken(): Promise<string | null> {

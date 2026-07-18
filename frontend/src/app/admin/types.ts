@@ -53,3 +53,17 @@ export interface QuestionsResponse {
   answerStats: Record<string, unknown>
   questionTypes: string[]
 }
+
+export interface AuditLogEntry {
+  id: number
+  actorEmail: string
+  action: string
+  targetType?: string
+  targetId?: string
+  details?: string
+  createdAt: string
+}
+
+export interface AuditLogResponse {
+  entries: AuditLogEntry[]
+}

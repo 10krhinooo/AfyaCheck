@@ -13,6 +13,17 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "sslRequired": "external",
+  "smtpServer": {
+    "host": "smtp.gmail.com",
+    "port": "587",
+    "from": "${MAIL_USERNAME}",
+    "fromDisplayName": "AfyaCheck",
+    "auth": "true",
+    "user": "${MAIL_USERNAME}",
+    "password": "${MAIL_PASSWORD}",
+    "starttls": "true",
+    "ssl": "false"
+  },
   "roles": {
     "realm": [
       {
@@ -55,6 +66,46 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:5173/##http://localhost:8080/"
+      }
+    },
+    {
+      "clientId": "afyacheck-backend",
+      "name": "AfyaCheck Backend (service account)",
+      "description": "Confidential client used only by the Spring Boot backend's KeycloakAdminService to assign/remove realm roles when an admin changes a user's role via the admin console. Never used for a user-facing login flow — no standard/implicit flow, no redirect URIs.",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_BACKEND_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@afyacheck.com",
+      "email": "admin@afyacheck.com",
+      "firstName": "AfyaCheck",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${SEED_ADMIN_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["default-roles-afyacheck", "ADMIN"]
+    },
+    {
+      "username": "service-account-afyacheck-backend",
+      "enabled": true,
+      "serviceAccountClientId": "afyacheck-backend",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users"]
       }
     }
   ],
