@@ -28,7 +28,7 @@ dependencies {
     // Auto-loads repo-root .env into Spring's Environment at startup (e.g. GOOGLE_MAPS_API_KEY,
     // GOOGLE_OAUTH_CLIENT_SECRET) so local dev doesn't require a manual
     // `set -a && source .env && set +a` before every bootRun.
-    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+    implementation 'me.paulschwarz:spring-dotenv:5.1.0'
 
     // Spring Boot Starters (Core)
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
