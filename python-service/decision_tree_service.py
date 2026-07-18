@@ -41,10 +41,13 @@ app = FastAPI(
     version="2.0.0"
 )
 
+# Server-to-server only (called from Spring Boot's DecisionTreeClient, see
+# decision.tree.service.url) -- allow_credentials=False since it's never a browser client and
+# can't legally pair with a wildcard origin anyway.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
