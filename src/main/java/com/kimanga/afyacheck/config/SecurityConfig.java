@@ -6,8 +6,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
@@ -33,16 +31,6 @@ import java.util.stream.Stream;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-
-    /**
-     * Still needed by UserService's register()/resetPassword() methods, which remain in the
-     * codebase (called only internally/from tests now that AuthController and its Thymeleaf
-     * forms are gone — Keycloak's hosted screens own registration and password reset).
-     */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
 
     @Bean
     public SecurityFilterChain filterChain(
