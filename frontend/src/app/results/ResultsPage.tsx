@@ -8,6 +8,8 @@ import { Skeleton } from '../../components/Skeleton'
 import { StatusMessage } from '../../components/StatusMessage'
 import { apiFetch } from '../../lib/api-client'
 import type { LatestResultResponse, RiskAssessmentDto } from '../../lib/results-types'
+import { DataControls } from './DataControls'
+import { EmailResultsForm } from './EmailResultsForm'
 import { readStoredResult } from './resultStorage'
 
 const riskTone = { Low: 'low', Medium: 'moderate', High: 'high' } as const
@@ -110,6 +112,18 @@ export default function ResultsPage() {
           ))}
         </ul>
       </Card>
+
+      {sessionId && (
+        <Card className="mt-6 p-8">
+          <EmailResultsForm sessionId={sessionId} />
+        </Card>
+      )}
+
+      {sessionId && (
+        <Card className="mt-6 p-8">
+          <DataControls sessionId={sessionId} />
+        </Card>
+      )}
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         <LinkButton href="/app/health-centers" variant="primary" className="flex-1">

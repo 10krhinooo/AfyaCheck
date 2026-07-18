@@ -404,6 +404,28 @@ public class SessionService {
                 .orElseThrow(() -> new RuntimeException("Session not found: " + safeSessionId));
     }
 
+    /**
+     * Self-service deletion for a user who knows their own sessionId (the same identifier
+     * already used to look up their results) -- deletes their answers, risk assessments, and
+     * the session itself. No authentication is required, matching the rest of the anonymous
+     * questionnaire flow; knowledge of the sessionId is the access control.
+     */
+    @Transactional
+    public boolean deleteSessionData(String sessionId) {
+        String safeSessionId = createSafeSessionId(sessionId);
+        Optional<Session> sessionOpt = sessionRepository.findBySessionId(safeSessionId);
+        if (sessionOpt.isEmpty()) {
+            return false;
+        }
+
+        Session session = sessionOpt.get();
+        answerRepository.deleteBySession(session);
+        riskAssessmentRepository.deleteBySession_SessionId(safeSessionId);
+        sessionRepository.delete(session);
+        logger.info("Deleted session data for: {}", safeSessionId);
+        return true;
+    }
+
     @Transactional
     public void completeSession(String sessionId) {
         try {
