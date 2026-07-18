@@ -67,3 +67,20 @@ export interface AuditLogEntry {
 export interface AuditLogResponse {
   entries: AuditLogEntry[]
 }
+
+export interface AdminHealthCenter {
+  id: number
+  name: string
+  address?: string
+  latitude: number
+  longitude: number
+  phone?: string
+  hours?: string
+  services?: string[]
+  stiTestingAvailable?: boolean
+  isActive: boolean
+}
+
+export interface HealthCentersResponse {
+  healthCenters: AdminHealthCenter[]
+}
