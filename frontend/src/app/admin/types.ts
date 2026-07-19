@@ -28,12 +28,6 @@ export interface AdminUser {
   role: string
 }
 
-export interface UsersResponse {
-  users: AdminUser[]
-  totalUsers: number
-  adminUsersCount: number
-}
-
 export interface AdminQuestion {
   id: number
   questionKey: string

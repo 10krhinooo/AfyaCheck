@@ -1,10 +1,10 @@
 import { RequireAuth } from '../../lib/auth/RequireAuth'
-import AdminUsersPage from './AdminUsersPage'
+import AdminAdminsPage from './AdminAdminsPage'
 
 export function Component() {
   return (
     <RequireAuth adminOnly>
-      <AdminUsersPage />
+      <AdminAdminsPage />
     </RequireAuth>
   )
 }

@@ -50,7 +50,7 @@ export const routes: RouteRecord[] = [
       // follows the same *.lazy.tsx pattern for consistency, even though its guard is simpler.
       { path: 'app/dashboard', lazy: () => import('./app/dashboard/DashboardPage.lazy') },
       { path: 'app/admin', lazy: () => import('./app/admin/AdminDashboardPage.lazy') },
-      { path: 'app/admin/users', lazy: () => import('./app/admin/AdminUsersPage.lazy') },
+      { path: 'app/admin/admins', lazy: () => import('./app/admin/AdminAdminsPage.lazy') },
       { path: 'app/admin/questions', lazy: () => import('./app/admin/AdminQuestionsPage.lazy') },
       { path: 'app/admin/health-centers', lazy: () => import('./app/admin/AdminHealthCentersPage.lazy') },
       { path: 'app/admin/audit-log', lazy: () => import('./app/admin/AdminAuditLogPage.lazy') },

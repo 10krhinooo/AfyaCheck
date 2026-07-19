@@ -221,62 +221,6 @@ class AdminServiceTest {
     }
 
     @Test
-    void getAllUsersConvertsToDTOs() {
-        when(userRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(sampleUser()));
-        assertThat(adminService.getAllUsers()).hasSize(1);
-    }
-
-    @Test
-    void getAllUsersReturnsEmptyOnException() {
-        when(userRepository.findAllByOrderByCreatedAtDesc()).thenThrow(new RuntimeException("boom"));
-        assertThat(adminService.getAllUsers()).isEmpty();
-    }
-
-    @Test
-    void getAdminUsersCountDelegatesToRepository() {
-        when(userRepository.countByRole(UserRole.ADMIN)).thenReturn(3L);
-        assertThat(adminService.getAdminUsersCount()).isEqualTo(3L);
-    }
-
-    @Test
-    void getAdminUsersCountReturnsZeroOnException() {
-        when(userRepository.countByRole(UserRole.ADMIN)).thenThrow(new RuntimeException("boom"));
-        assertThat(adminService.getAdminUsersCount()).isZero();
-    }
-
-    @Test
-    void toggleUserStatusFailsWhenUserNotFound() {
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
-        ServiceResult<Void> result = adminService.toggleUserStatus(1L);
-        assertThat(result.isSuccess()).isFalse();
-    }
-
-    @Test
-    void toggleUserStatusTogglesEnabledFlag() {
-        authenticateAs("admin@example.com");
-        User user = sampleUser();
-        user.setEnabled(true);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-
-        ServiceResult<Void> result = adminService.toggleUserStatus(1L);
-
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(user.getEnabled()).isFalse();
-
-        ArgumentCaptor<AdminAuditLog> captor = ArgumentCaptor.forClass(AdminAuditLog.class);
-        verify(adminAuditLogRepository).save(captor.capture());
-        assertThat(captor.getValue().getActorEmail()).isEqualTo("admin@example.com");
-        assertThat(captor.getValue().getAction()).isEqualTo("TOGGLE_USER_STATUS");
-    }
-
-    @Test
-    void toggleUserStatusFailsOnException() {
-        when(userRepository.findById(anyLong())).thenThrow(new RuntimeException("boom"));
-        ServiceResult<Void> result = adminService.toggleUserStatus(1L);
-        assertThat(result.isSuccess()).isFalse();
-    }
-
-    @Test
     void getAllQuestionsReturnsEmptyOnException() {
         when(questionRepository.findByIsActiveTrueOrderByDisplayOrderAsc()).thenThrow(new RuntimeException("boom"));
         assertThat(adminService.getAllQuestions()).isEmpty();
