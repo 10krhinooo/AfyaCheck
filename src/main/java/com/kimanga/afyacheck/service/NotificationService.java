@@ -27,4 +27,15 @@ public class NotificationService {
 
         emailService.sendHtmlMail(toEmail, "Your AfyaCheck results", "email/risk-result.html", context);
     }
+
+    /**
+     * Generic "time to retest" nudge for the opt-in reminder flow (ReminderService).
+     * Deliberately carries no assessment data — the stored reminder has no link to one.
+     */
+    public void sendRetestReminderEmail(String toEmail) {
+        Context context = new Context();
+        context.setVariable("appHomeUrl", appBaseUrl);
+
+        emailService.sendHtmlMail(toEmail, "A gentle reminder from AfyaCheck", "email/retest-reminder.html", context);
+    }
 }

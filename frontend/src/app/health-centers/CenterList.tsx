@@ -1,4 +1,5 @@
-import { ExternalLink, MapPin, Phone } from 'lucide-react'
+import { Clock, ExternalLink, MapPin, Phone } from 'lucide-react'
+import { Badge } from '../../components/Badge'
 import { Card } from '../../components/Card'
 import type { HealthCenter } from './types'
 
@@ -17,6 +18,25 @@ export function CenterList({ centers }: { centers: HealthCenter[] }) {
                 <MapPin aria-hidden="true" size={14} className="mt-0.5 flex-shrink-0 text-teal-500" />
                 {center.address}
               </p>
+              {center.hours && (
+                <p className="mt-1 flex items-start gap-1.5 text-sm text-ink-soft">
+                  <Clock aria-hidden="true" size={14} className="mt-0.5 flex-shrink-0 text-teal-500" />
+                  {center.hours}
+                </p>
+              )}
+              {(center.stiTestingAvailable || (center.services?.length ?? 0) > 0) && (
+                <p className="mt-2 flex flex-wrap gap-1.5">
+                  {center.stiTestingAvailable && <Badge tone="low">STI testing</Badge>}
+                  {center.services?.map((service) => (
+                    <span
+                      key={service}
+                      className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs text-teal-700"
+                    >
+                      {service}
+                    </span>
+                  ))}
+                </p>
+              )}
               {center.phone && (
                 <a
                   href={`tel:${center.phone}`}

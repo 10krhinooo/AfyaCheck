@@ -103,6 +103,9 @@ public class SecurityConfig {
                                 "/api/questionnaire/**",
                                 "/api/questions/**",
                                 "/api/results/**",
+                                // Opt-in retest reminder: same anonymous access model as
+                                // /api/results/notify (and the same strict rate limit).
+                                "/api/reminders",
                                 "/api/config/**"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

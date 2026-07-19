@@ -50,7 +50,13 @@
     "deleteYes": "Ndiyo, futa",
     "cancel": "Ghairi",
     "deleted": "Data yako imefutwa.",
-    "deleteError": "Hatukuweza kufuta data yako. Tafadhali jaribu tena."
+    "deleteError": "Hatukuweza kufuta data yako. Tafadhali jaribu tena.",
+    "history": "Tathmini zilizopita",
+    "remindHint": "Ungependa kukumbushwa kupima tena? Tutahifadhi barua pepe yako kwa ajili ya ukumbusho mmoja tu, kisha tutaifuta — haitahusishwa kamwe na matokeo yako.",
+    "remindLabel": "Nikumbushe kupima tena baada ya miezi 3",
+    "remindCta": "Nikumbushe",
+    "remindScheduled": "Imekamilika — tutakutumia ukumbusho mmoja baada ya takriban miezi 3.",
+    "remindError": "Hatukuweza kupanga hilo. Tafadhali jaribu tena."
   },
   "options": {
     "Yes": "Ndiyo",

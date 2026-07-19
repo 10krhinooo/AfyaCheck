@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     static final String NOTIFY_PATH = "/api/results/notify";
+    static final String REMINDERS_PATH = "/api/reminders";
 
     private final boolean enabled;
     private final int publicRequestsPerMinute;
@@ -72,7 +73,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        boolean isNotify = NOTIFY_PATH.equals(request.getRequestURI());
+        // Both email-sending endpoints share the strict hourly budget.
+        String uri = request.getRequestURI();
+        boolean isNotify = NOTIFY_PATH.equals(uri) || REMINDERS_PATH.equals(uri);
         int limit = isNotify ? notifyRequestsPerHour : publicRequestsPerMinute;
         long windowSeconds = isNotify ? 3600 : 60;
         String key = (isNotify ? "notify:" : "public:") + request.getRemoteAddr();

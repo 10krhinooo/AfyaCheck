@@ -50,6 +50,12 @@
     "deleteYes": "Yes, delete",
     "cancel": "Cancel",
     "deleted": "Your data has been deleted.",
-    "deleteError": "We couldn’t delete your data. Please try again."
+    "deleteError": "We couldn’t delete your data. Please try again.",
+    "history": "Previous assessments",
+    "remindHint": "Want a nudge to test again? We’ll store your email only to send one reminder, then delete it — it’s never linked to your results.",
+    "remindLabel": "Remind me to retest in 3 months",
+    "remindCta": "Remind me",
+    "remindScheduled": "Done — we’ll send you one reminder in about 3 months.",
+    "remindError": "We couldn’t schedule that. Please try again."
   }
 }

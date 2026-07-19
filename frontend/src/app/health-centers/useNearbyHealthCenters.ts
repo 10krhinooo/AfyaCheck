@@ -19,10 +19,14 @@ export function useNearbyHealthCenters(mapsReady: boolean) {
   const [centers, setCenters] = useState<HealthCenter[]>([])
   const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Distinguishes "geolocation denied/unavailable" from search failures: the page offers
+  // the county picker for the former, a plain retry for the latter.
+  const [locationDenied, setLocationDenied] = useState(false)
   const [attempt, setAttempt] = useState(0)
 
   const retry = useCallback(() => {
     setError(null)
+    setLocationDenied(false)
     setAttempt((a) => a + 1)
   }, [])
 
@@ -63,50 +67,62 @@ export function useNearbyHealthCenters(mapsReady: boolean) {
     )
   }, [])
 
+  const searchFrom = useCallback(
+    async (here: { lat: number; lng: number }) => {
+      setOrigin(here)
+      setError(null)
+      setLocationDenied(false)
+      setStatus('searching')
+
+      // Admin-curated centers are the preferred source (vetted, richer detail); fall back
+      // to a live Places search when none are curated near this location yet.
+      try {
+        const curated = await apiFetch<CuratedHealthCenterDto[]>(
+          `/api/health-centers/nearby?lat=${here.lat}&lng=${here.lng}`,
+        )
+        if (curated.length > 0) {
+          const found: HealthCenter[] = curated.map((c) => ({
+            id: String(c.id),
+            name: c.name,
+            address: c.address ?? 'Address unavailable',
+            phone: c.phone ?? undefined,
+            hours: c.hours ?? undefined,
+            services: c.services ?? undefined,
+            stiTestingAvailable: c.stiTestingAvailable ?? undefined,
+            lat: c.latitude,
+            lng: c.longitude,
+            distanceKm: Math.round(distanceKm(here, { lat: c.latitude, lng: c.longitude }) * 10) / 10,
+          }))
+          setCenters(found)
+          setStatus('done')
+          return
+        }
+      } catch {
+        // Curated lookup failing shouldn't block the live fallback below.
+      }
+
+      searchLivePlaces(here)
+    },
+    [searchLivePlaces],
+  )
+
   useEffect(() => {
     if (!mapsReady) return
 
     setStatus('locating')
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const here = { lat: position.coords.latitude, lng: position.coords.longitude }
-        setOrigin(here)
-        setStatus('searching')
-
-        // Admin-curated centers are the preferred source (vetted, richer detail); fall back
-        // to a live Places search when none are curated near this location yet.
-        try {
-          const curated = await apiFetch<CuratedHealthCenterDto[]>(
-            `/api/health-centers/nearby?lat=${here.lat}&lng=${here.lng}`,
-          )
-          if (curated.length > 0) {
-            const found: HealthCenter[] = curated.map((c) => ({
-              id: String(c.id),
-              name: c.name,
-              address: c.address ?? 'Address unavailable',
-              phone: c.phone ?? undefined,
-              lat: c.latitude,
-              lng: c.longitude,
-              distanceKm: Math.round(distanceKm(here, { lat: c.latitude, lng: c.longitude }) * 10) / 10,
-            }))
-            setCenters(found)
-            setStatus('done')
-            return
-          }
-        } catch {
-          // Curated lookup failing shouldn't block the live fallback below.
-        }
-
-        searchLivePlaces(here)
+      (position) => {
+        void searchFrom({ lat: position.coords.latitude, lng: position.coords.longitude })
       },
       () => {
         setError(
-          'Location access was denied, so we can’t show nearby centers. Enable location access for this site in your browser settings, then try again.',
+          'Location access was denied, so we can’t detect where you are. Pick your county below to search from there instead, or enable location access and try again.',
         )
+        setLocationDenied(true)
         setStatus('error')
       },
     )
-  }, [mapsReady, attempt, searchLivePlaces])
+  }, [mapsReady, attempt, searchFrom])
 
-  return { status, centers, origin, error, retry }
+  return { status, centers, origin, error, locationDenied, searchFrom, retry }
 }

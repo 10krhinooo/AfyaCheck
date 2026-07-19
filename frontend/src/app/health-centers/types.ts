@@ -3,6 +3,10 @@ export interface HealthCenter {
   name: string
   address: string
   phone?: string
+  hours?: string
+  services?: string[]
+  // Only known for admin-curated centers; live Places results leave it undefined.
+  stiTestingAvailable?: boolean
   distanceKm?: number
   lat: number
   lng: number

@@ -8,9 +8,10 @@ import { Skeleton } from '../../components/Skeleton'
 import { StatusMessage } from '../../components/StatusMessage'
 import { apiFetch } from '../../lib/api-client'
 import { useTranslation } from '../../lib/i18n'
-import type { LatestResultResponse, RiskAssessmentDto } from '../../lib/results-types'
+import type { HistoryResponse, LatestResultResponse, RiskAssessmentDto } from '../../lib/results-types'
 import { DataControls } from './DataControls'
 import { EmailResultsForm } from './EmailResultsForm'
+import { RemindMeForm } from './RemindMeForm'
 import { readLastSessionId, readStoredResult } from './resultStorage'
 
 const riskTone = { Low: 'low', Medium: 'moderate', High: 'high' } as const
@@ -25,6 +26,7 @@ export default function ResultsPage() {
   // loses router state) still shows the assessment from this browser session.
   const sessionId = (location.state as { sessionId?: string } | null)?.sessionId ?? readLastSessionId() ?? undefined
   const [assessment, setAssessment] = useState<RiskAssessmentDto | null>(null)
+  const [history, setHistory] = useState<RiskAssessmentDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -59,6 +61,15 @@ export default function ResultsPage() {
         setError(LOAD_ERROR)
         setLoading(false)
       })
+  }, [sessionId, attempt])
+
+  // Best-effort: earlier assessments from the same session, shown below the current one.
+  // Failures here never block the main result.
+  useEffect(() => {
+    if (!sessionId) return
+    apiFetch<HistoryResponse>(`/api/results/history?sessionId=${encodeURIComponent(sessionId)}`)
+      .then((response) => setHistory(response.assessments ?? []))
+      .catch(() => setHistory([]))
   }, [sessionId, attempt])
 
   if (loading) {
@@ -118,11 +129,38 @@ export default function ResultsPage() {
         </ul>
       </Card>
 
+      {history.length > 1 && (
+        <Card className="mt-6 p-8">
+          <h2 className="text-lg text-ink">{t('results.history')}</h2>
+          <ul className="mt-4 divide-y divide-teal-50">
+            {history.slice(1).map((item, index) => (
+              <li key={`${item.createdAt}-${index}`} className="flex items-center justify-between gap-4 py-3">
+                <span className="text-sm text-ink-soft">
+                  {new Date(item.createdAt).toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+                <span className="flex items-center gap-3">
+                  <Badge tone={riskTone[item.riskLevel]}>{t(riskLabelKey[item.riskLevel])}</Badge>
+                  <span className="font-display text-lg text-ink">{item.riskScore}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {sessionId && (
         <Card className="mt-6 p-8">
           <EmailResultsForm sessionId={sessionId} />
         </Card>
       )}
+
+      <Card className="mt-6 p-8">
+        <RemindMeForm />
+      </Card>
 
       {sessionId && (
         <Card className="mt-6 p-8">

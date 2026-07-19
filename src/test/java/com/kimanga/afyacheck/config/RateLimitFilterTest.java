@@ -68,6 +68,16 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void remindersEndpointSharesTheStrictEmailLimit() throws Exception {
+        RateLimitFilter filter = new RateLimitFilter(true, 100, 2, Clock.fixed(NOW, ZoneOffset.UTC));
+        request(filter, RateLimitFilter.REMINDERS_PATH, "1.2.3.4")
+        ;
+        request(filter, RateLimitFilter.NOTIFY_PATH, "1.2.3.4");
+        MockHttpServletResponse rejected = request(filter, RateLimitFilter.REMINDERS_PATH, "1.2.3.4");
+        assertThat(rejected.getStatus()).isEqualTo(429);
+    }
+
+    @Test
     void windowResetsAfterItElapses() throws Exception {
         MutableClock clock = new MutableClock(NOW);
         RateLimitFilter filter = new RateLimitFilter(true, 1, 5, clock);
