@@ -1,13 +1,16 @@
 package com.kimanga.afyacheck;
 
-import org.springframework.boot.SpringApplication;
+import me.paulschwarz.springdotenv.spring.DotenvApplicationInitializer;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 
 @SpringBootApplication
 public class AfyacheckApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(AfyacheckApplication.class, args);
+		new SpringApplicationBuilder(AfyacheckApplication.class)
+				.initializers(new DotenvApplicationInitializer())
+				.run(args);
 	}
 
 }
