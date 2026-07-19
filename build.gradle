@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.3.4'
-    id 'io.spring.dependency-management' version '1.1.6'
+    id 'io.spring.dependency-management' version '1.1.7'
     id 'jacoco'
 
 }
@@ -28,13 +28,13 @@ dependencies {
     // Auto-loads repo-root .env into Spring's Environment at startup (e.g. GOOGLE_MAPS_API_KEY,
     // GOOGLE_OAUTH_CLIENT_SECRET) so local dev doesn't require a manual
     // `set -a && source .env && set +a` before every bootRun.
-    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+    implementation 'me.paulschwarz:spring-dotenv:5.1.0'
 
     // Spring Boot Starters (Core)
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    // Thymeleaf now renders only transactional emails (EmailSenderService's
-    // templates/email/*.html) — all page templates were replaced by the React frontend.
+    // Thymeleaf now renders only transactional emails (EmailService's templates/email/*.html)
+    // — all page templates were replaced by the React frontend.
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
@@ -48,6 +48,10 @@ dependencies {
 
     // Reactive (optional - remove if not needed)
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    // API docs: exposes /v3/api-docs and /swagger-ui.html, auto-generated from controller
+    // annotations (see SecurityConfig for access gating).
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
 
     // Database
     runtimeOnly 'org.postgresql:postgresql'

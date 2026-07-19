@@ -86,6 +86,11 @@ public class SecurityConfig {
                                 // `.json()` call on it throws "Unexpected end of JSON input".
                                 "/static-loader-data-manifest-*.json",
                                 "/static-loader-data/**",
+                                // /app/** forwards here (see WebConfig) — needed alongside
+                                // "/app/**" for the same reason "/index.html" is listed
+                                // separately: Spring Security re-evaluates on the internal
+                                // FORWARD dispatch too.
+                                "/app-shell.html",
                                 // Prerendered marketing/legal pages (see WebConfig) — public by nature,
                                 // same as "/" above. Both the clean path and its forward:/*.html target
                                 // are needed: Spring Security re-evaluates on the internal FORWARD
@@ -108,6 +113,10 @@ public class SecurityConfig {
                                 "/api/config/**"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // API docs describe admin endpoint shapes too, so gate the same as
+                        // /api/admin/** rather than leaving the whole API contract public.
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                        .hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

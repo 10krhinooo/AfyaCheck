@@ -14,3 +14,7 @@ export function readStoredResult(sessionId: string): QuestionnaireEndResponse | 
   const raw = sessionStorage.getItem(KEY_PREFIX + sessionId)
   return raw ? (JSON.parse(raw) as QuestionnaireEndResponse) : null
 }
+
+export function clearStoredResult(sessionId: string) {
+  sessionStorage.removeItem(KEY_PREFIX + sessionId)
+}

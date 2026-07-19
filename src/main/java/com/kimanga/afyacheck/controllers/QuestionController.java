@@ -151,7 +151,8 @@ public class QuestionController {
                     sessionId,
                     (String) nextStep.get("riskLevel"),
                     (Integer) nextStep.get("riskScore"),
-                    (String) nextStep.get("recommendations"));
+                    (String) nextStep.get("recommendations"),
+                    (String) nextStep.get("modelVersion"));
 
             body.put("riskScore", nextStep.get("riskScore"));
             body.put("riskLevel", nextStep.get("riskLevel"));
@@ -168,7 +169,8 @@ public class QuestionController {
                     sessionId,
                     (String) riskAssessment.get("riskLevel"),
                     (Integer) riskAssessment.get("riskScore"),
-                    (String) riskAssessment.get("recommendations"));
+                    (String) riskAssessment.get("recommendations"),
+                    (String) riskAssessment.get("modelVersion"));
 
             body.put("riskScore", riskAssessment.get("riskScore"));
             body.put("riskLevel", riskAssessment.get("riskLevel"));

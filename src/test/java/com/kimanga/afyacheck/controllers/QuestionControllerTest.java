@@ -119,13 +119,14 @@ class QuestionControllerTest {
         nextStep.put("riskLevel", "High");
         nextStep.put("recommendations", "Rec1; Rec2");
         nextStep.put("text", "done");
+        nextStep.put("modelVersion", "test-model-v1");
         when(decisionService.getNextQuestion(any())).thenReturn(nextStep);
 
         ResponseEntity<Map<String, Object>> response =
                 controller.next(new QuestionController.NextRequest("sid-3", Map.of()));
 
         assertThat(response.getBody()).containsEntry("riskScore", 80);
-        verify(sessionService).saveRiskAssessment("sid-3", "High", 80, "Rec1; Rec2");
+        verify(sessionService).saveRiskAssessment("sid-3", "High", 80, "Rec1; Rec2", "test-model-v1");
     }
 
     @Test
@@ -139,13 +140,14 @@ class QuestionControllerTest {
         fallbackAssessment.put("riskScore", 40);
         fallbackAssessment.put("riskLevel", "Medium");
         fallbackAssessment.put("recommendations", "RecA; RecB");
+        fallbackAssessment.put("modelVersion", "test-model-v2");
         when(decisionService.calculateRiskScore(any())).thenReturn(fallbackAssessment);
 
         ResponseEntity<Map<String, Object>> response =
                 controller.next(new QuestionController.NextRequest("sid-4", Map.of()));
 
         assertThat(response.getBody()).containsEntry("riskScore", 40);
-        verify(sessionService).saveRiskAssessment("sid-4", "Medium", 40, "RecA; RecB");
+        verify(sessionService).saveRiskAssessment("sid-4", "Medium", 40, "RecA; RecB", "test-model-v2");
     }
 
     @Test

@@ -17,7 +17,10 @@ export function getUserManager(): UserManager {
       authority: issuer,
       client_id: clientId,
       redirect_uri: `${window.location.origin}/app/callback`,
-      post_logout_redirect_uri: window.location.origin,
+      // Must exactly match an entry in the Keycloak client's post.logout.redirect.uris
+      // (see keycloak/realm-export.json) -- Keycloak does exact string matching here, and
+      // that list is registered with a trailing slash.
+      post_logout_redirect_uri: `${window.location.origin}/`,
       response_type: 'code',
       scope: 'openid profile email',
       userStore: new WebStorageStateStore({ store: window.sessionStorage }),

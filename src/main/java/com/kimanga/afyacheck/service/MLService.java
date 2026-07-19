@@ -137,6 +137,7 @@ public class MLService {
                 "recommendations", recommendations,
                 "confidence", 0.75,
                 "modelUsed", false,
+                "modelVersion", "java-rule-fallback-v1",
                 "timestamp", java.time.LocalDateTime.now().toString()
         );
     }

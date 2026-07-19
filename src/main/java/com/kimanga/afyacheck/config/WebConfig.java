@@ -9,13 +9,18 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        // frontend/dist is bundled into static resources at build time as a single SPA shell
-        // (one index.html, one JS bundle — the same bundle prerenders "/" at build time via
-        // vite-react-ssg AND drives client-side React Router for everything under /app/**).
-        // Deep links/refreshes under /app/** don't correspond to a static file, so forward
-        // them to that same index.html and let React Router take over once it hydrates.
-        registry.addViewController("/app/{path:[^\\.]*}").setViewName("forward:/index.html");
-        registry.addViewController("/app/**").setViewName("forward:/index.html");
+        // frontend/dist bundles one JS/CSS build shared by both "/" (prerendered by
+        // vite-react-ssg at build time) and everything under /app/** (a pure client-rendered
+        // SPA, no SEO value — see vite.config.ts ssgOptions.includedRoutes). Deep links/refreshes
+        // under /app/** don't correspond to a static file, so forward them to app-shell.html —
+        // index.html stripped of "/"'s prerendered markup and its data-server-rendered flag (see
+        // scripts/generate-app-shell.mjs) — rather than to index.html itself: forwarding to
+        // index.html would make the client bundle try to *hydrate* the Landing page's markup
+        // against whatever /app/** route actually matched, which is guaranteed to mismatch and
+        // throws a React error #418 on every load. app-shell.html has an empty root, so the
+        // bundle does a plain client-side render() there instead.
+        registry.addViewController("/app/{path:[^\\.]*}").setViewName("forward:/app-shell.html");
+        registry.addViewController("/app/**").setViewName("forward:/app-shell.html");
 
         // About/FAQ/Privacy/Terms are each individually prerendered to their own static HTML
         // file at build time (see vite.config.ts ssgOptions.includedRoutes), unlike /app/**'s

@@ -1,9 +1,13 @@
 package com.kimanga.afyacheck.controllers;
 
+import com.kimanga.afyacheck.model.HealthCenter;
+import com.kimanga.afyacheck.service.HealthCenterService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -16,11 +20,26 @@ import java.util.Map;
 @RestController
 public class HealthCenterController {
 
+    private static final double DEFAULT_RADIUS_KM = 10;
+
+    private final HealthCenterService healthCenterService;
+
     @Value("${google.maps.api.key}")
     private String apiKey;
+
+    public HealthCenterController(HealthCenterService healthCenterService) {
+        this.healthCenterService = healthCenterService;
+    }
 
     @GetMapping("/api/config/maps-key")
     public Map<String, String> mapsKey() {
         return Map.of("apiKey", apiKey);
+    }
+
+    // Curated centers near the given point; the frontend falls back to a live Google Places
+    // search when this comes back empty (see useNearbyHealthCenters.ts).
+    @GetMapping("/api/health-centers/nearby")
+    public List<HealthCenter> nearby(@RequestParam double lat, @RequestParam double lng) {
+        return healthCenterService.findNearby(lat, lng, DEFAULT_RADIUS_KM);
     }
 }

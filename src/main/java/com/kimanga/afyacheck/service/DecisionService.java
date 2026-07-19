@@ -169,7 +169,8 @@ public class DecisionService {
                 "recommendations", recommendationsString,
                 "hivProbability", riskScore / 100.0,
                 "confidence", 0.75, // Heuristic confidence for fallback
-                "modelUsed", false
+                "modelUsed", false,
+                "modelVersion", "java-rule-fallback-v1"
         );
     }
 
@@ -490,6 +491,7 @@ public class DecisionService {
         Integer riskScore = (Integer) mlResult.get("riskScore");
         String riskLevel = (String) mlResult.get("riskLevel");
         Boolean modelUsed = (Boolean) mlResult.get("modelUsed");
+        String modelVersion = (String) mlResult.get("modelVersion");
 
         @SuppressWarnings("unchecked")
         List<String> mlRecommendations = (List<String>) mlResult.get("recommendations");
@@ -509,7 +511,8 @@ public class DecisionService {
                 "recommendations", recommendationsString, // This holds the final string output
                 "hivProbability", hivProbability != null ? hivProbability : 0.0,
                 "confidence", FINAL_CONFIDENCE,
-                "modelUsed", modelUsed != null ? modelUsed : false
+                "modelUsed", modelUsed != null ? modelUsed : false,
+                "modelVersion", modelVersion != null ? modelVersion : "unknown"
         );
     }
 
