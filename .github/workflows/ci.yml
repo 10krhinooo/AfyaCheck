@@ -61,8 +61,24 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      # Node is needed because `./gradlew build` now bundles the React SPA into the jar
+      # (see build.gradle's buildFrontend/processResources wiring).
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
       - name: Build and test
         run: ./gradlew build
+
+      - name: Upload application jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: afyacheck-jar
+          path: build/libs/afyacheck.jar
+          if-no-files-found: error
 
       - name: Upload test report
         if: failure()
@@ -140,9 +156,3 @@ jobs:
 
       - name: Check bundle budget
         run: npm run budget:check
-
-      - name: Upload frontend build
-        uses: actions/upload-artifact@v7
-        with:
-          name: frontend-dist
-          path: frontend/dist

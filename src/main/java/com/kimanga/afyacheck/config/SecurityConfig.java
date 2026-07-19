@@ -7,8 +7,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
@@ -36,16 +34,6 @@ import java.util.stream.Stream;
 public class SecurityConfig {
 
     /**
-     * Still needed by UserService's register()/resetPassword() methods, which remain in the
-     * codebase (called only internally/from tests now that AuthController and its Thymeleaf
-     * forms are gone — Keycloak's hosted screens own registration and password reset).
-     */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    /**
      * The SPA's oidc-client-ts talks directly to this origin (OIDC discovery + token endpoint)
      * from the browser, so it must be allowed in the CSP's connect-src below or every
      * signinRedirect()/silent-renew call gets blocked client-side before it even leaves the
@@ -69,10 +57,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/",
-                                "/css/**",
-                                "/js/**",
-                                "/images/**",
-                                "/webjars/**",
                                 "/app/**",
                                 "/assets/**",
                                 "/favicon.svg",
@@ -86,6 +70,15 @@ public class SecurityConfig {
                                 // `.json()` call on it throws "Unexpected end of JSON input".
                                 "/static-loader-data-manifest-*.json",
                                 "/static-loader-data/**",
+                                // PWA service worker + manifest (vite-plugin-pwa output). The
+                                // browser fetches these with no auth header; without permitAll
+                                // the SW registration 401s and the PWA install/precache never
+                                // happens for anonymous users.
+                                "/sw.js",
+                                "/registerSW.js",
+                                "/workbox-*.js",
+                                "/manifest.webmanifest",
+                                "/pwa-*.png",
                                 // /app/** forwards here (see WebConfig) — needed alongside
                                 // "/app/**" for the same reason "/index.html" is listed
                                 // separately: Spring Security re-evaluates on the internal

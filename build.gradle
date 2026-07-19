@@ -20,10 +20,6 @@ repositories {
     mavenCentral()
 }
 
-ext {
-    set('springAiVersion', "1.0.2")
-}
-
 dependencies {
     // Auto-loads repo-root .env into Spring's Environment at startup (e.g. GOOGLE_MAPS_API_KEY,
     // GOOGLE_OAUTH_CLIENT_SECRET) so local dev doesn't require a manual
@@ -45,9 +41,6 @@ dependencies {
 
     // Email (optional - keep if you need it)
     implementation 'org.springframework.boot:spring-boot-starter-mail'
-
-    // Reactive (optional - remove if not needed)
-    implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
     // API docs: exposes /v3/api-docs and /swagger-ui.html, auto-generated from controller
     // annotations (see SecurityConfig for access gating).
@@ -73,20 +66,33 @@ dependencies {
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
-    testImplementation 'io.projectreactor:reactor-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    implementation 'javax.annotation:javax.annotation-api:1.3.2'
-
-
 }
 
 jacoco {
     toolVersion = "0.8.12"
 }
 
-dependencyManagement {
-    imports {
-        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+// Bundle the React SPA into the jar so `./gradlew build` produces the single deployable
+// artifact (WebConfig forwards /app/** to the bundled app-shell.html). Pass -PskipFrontend
+// for backend-only iteration on a machine without Node, or when the SPA is irrelevant to
+// what you're testing.
+def includeFrontend = !project.hasProperty('skipFrontend')
+
+tasks.register('buildFrontend', Exec) {
+    description = 'Builds the React SPA (npm ci + vite build) into frontend/dist'
+    workingDir file('frontend')
+    commandLine 'bash', '-c', 'npm ci && npm run build'
+    inputs.files(fileTree('frontend/src'), fileTree('frontend/public'))
+    inputs.files('frontend/package.json', 'frontend/package-lock.json',
+                 'frontend/vite.config.ts', 'frontend/tsconfig.json', 'frontend/index.html')
+    outputs.dir file('frontend/dist')
+}
+
+processResources {
+    if (includeFrontend) {
+        dependsOn 'buildFrontend'
+        from('frontend/dist') { into 'static' }
     }
 }
 
@@ -96,15 +102,7 @@ tasks.named('test') {
 }
 
 def coverageExclusions = [
-    'com/kimanga/afyacheck/AfyacheckApplication.class',
-    // Pure getter/setter DTOs with zero behavior and no callers anywhere in
-    // src/main — dead code left over from an earlier iteration of the API
-    // (superseded by the DTOs the current controllers/services actually use).
-    'com/kimanga/afyacheck/DTO/SessionStartResponse.class',
-    'com/kimanga/afyacheck/DTO/QuestionProgress.class',
-    'com/kimanga/afyacheck/DTO/SessionState.class',
-    'com/kimanga/afyacheck/DTO/HealthCenterResponse.class',
-    'com/kimanga/afyacheck/DTO/LocationRequest.class'
+    'com/kimanga/afyacheck/AfyacheckApplication.class'
 ]
 
 jacocoTestReport {

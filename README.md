@@ -2,7 +2,7 @@
 
 AfyaCheck is an STI/HIV risk assessment system. Users answer a guided questionnaire, get a machine learning based risk assessment, and can find nearby health centers for follow up care. An admin dashboard lets staff manage users, review questions, and monitor activity.
 
-A React SPA is being incrementally strangler-fig migrated in to replace the legacy Thymeleaf UI, see Architecture below.
+The UI is a React SPA served by the backend itself: `./gradlew build` bundles the built frontend into the jar, so the backend jar is the single deployable artifact (the old server-rendered Thymeleaf UI is fully retired; Thymeleaf now renders only transactional emails).
 
 ## Features
 
@@ -27,7 +27,7 @@ The system is made up of four services:
 | Backend | `src/` | Spring Boot 3 (Java 21), PostgreSQL, Flyway | Questionnaire flow, sessions, admin dashboard, orchestrates the two ML services, validates Keycloak-issued JWTs |
 | Decision tree service | `python-service/` | FastAPI, scikit-learn | Sequences the next question based on prior answers |
 | ML risk prediction service | `ml-service/` | FastAPI, scikit-learn/XGBoost | Produces the final HIV/STI risk prediction from questionnaire answers |
-| Frontend | `frontend/` | React + Vite (`vite-react-ssg`), TypeScript | SPA under `/app/**`, replacing the legacy Thymeleaf templates route by route |
+| Frontend | `frontend/` | React + Vite (`vite-react-ssg`), TypeScript | SPA under `/app/**` plus prerendered marketing/legal pages; bundled into the backend jar at build time |
 
 Identity is owned by Keycloak. See `keycloak/realm-export.json` for the realm/client config and `keycloak/themes/afyacheck/` for the custom login theme (extends Keycloak's built-in `keycloak.v2` theme with AfyaCheck's palette and type) and email theme (branded HTML wrapper shared by every Keycloak-sent email: verify-email, password-reset, execute-actions, etc.).
 
@@ -73,21 +73,20 @@ Required variables:
 
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` — PostgreSQL connection
 - `MAIL_USERNAME`, `MAIL_PASSWORD` — SMTP credentials used for outbound email (both the backend's own mail sender and Keycloak's `smtpServer` config in `realm-export.json` read these — see docker-compose.yml, which passes them through to the Keycloak container)
-- `REMEMBER_ME_KEY` — a long random string used to sign remember me cookies
 - `KEYCLOAK_BACKEND_CLIENT_SECRET` — the `afyacheck-backend` service-account client secret (`KeycloakAdminService` uses it to call Keycloak's Admin REST API when an admin changes a user's role); must match the same value docker-compose.yml passes into the Keycloak container, so the client Keycloak imports and the credential the backend authenticates with agree. Generate one with `openssl rand -hex 32`.
 - `SEED_ADMIN_PASSWORD` — password for the seed admin user (`admin@afyacheck.com`) that `docker compose up` imports into Keycloak from `realm-export.json`; not read by the Spring app itself, only by docker-compose.yml
 - `GOOGLE_MAPS_API_KEY` — used by the health center finder
 - `APP_BASE_URL` — the base URL used to build links in emails
 
-`DB_PASSWORD`, `MAIL_PASSWORD`, `REMEMBER_ME_KEY`, and `KEYCLOAK_BACKEND_CLIENT_SECRET` have no default: the app fails to start if they are unset rather than running with a blank credential. `SEED_ADMIN_PASSWORD` has no default either, but it's docker-compose.yml (not the Spring app) that substitutes it into the imported realm.
+`DB_PASSWORD`, `MAIL_PASSWORD`, and `KEYCLOAK_BACKEND_CLIENT_SECRET` have no default: the app fails to start if they are unset rather than running with a blank credential. `SEED_ADMIN_PASSWORD` has no default either, but it's docker-compose.yml (not the Spring app) that substitutes it into the imported realm.
 
 Optional:
 
 - `PYTHON_EXECUTABLE_PATH`: defaults to a Windows path (`C:/Python314/python.exe`); override to your platform's interpreter (e.g. `/usr/bin/python3` on Linux/macOS) if `PythonServiceManager` fails to start the two Python services below.
 
-The two Python services are not auto-started by the backend (`ml.service.auto.start` /
-`decision.tree.service.auto.start` both default `false`), start them manually before hitting
-endpoints that depend on them.
+The two Python services are auto-started by the backend (`ml.service.auto.start` /
+`decision.tree.service.auto.start` are `true`; `PythonServiceManager` spawns and monitors
+them). Set them to `false` if you prefer to run the services manually as shown below.
 
 ### 4. Python services
 
@@ -112,7 +111,10 @@ The backend expects both services to be reachable; see `PythonConfig` for the co
 ./gradlew bootRun
 ```
 
-The app starts on `http://localhost:8080`.
+The app starts on `http://localhost:8080` and serves the bundled React SPA. Building the jar
+(`./gradlew build`) runs `npm ci && npm run build` in `frontend/` and copies `frontend/dist`
+into the jar's `static/` resources; pass `-PskipFrontend` for backend-only iteration on a
+machine without Node.
 
 ### 6. Run the frontend
 

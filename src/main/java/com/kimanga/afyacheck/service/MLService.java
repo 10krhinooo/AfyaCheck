@@ -24,7 +24,7 @@ public class MLService {
     private final RestTemplate restTemplate;
 
     // Assuming the ML risk predictor endpoint is separate from the Decision Tree sequencer.
-    @Value("${ml.risk.service.url:http://localhost:8000}")
+    @Value("${ml.service.url:http://localhost:8000}")
     private String mlRiskServiceUrl;
 
     // --- MAPPINGS (Used only for normalization, not for integer encoding) ---
