@@ -5,11 +5,13 @@ import com.kimanga.afyacheck.DTO.admin.UserDTO;
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import com.kimanga.afyacheck.model.AdminAuditLog;
 import com.kimanga.afyacheck.model.Answer;
+import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.repository.AdminAuditLogRepository;
 import com.kimanga.afyacheck.repository.AnswerRepository;
+import com.kimanga.afyacheck.repository.HealthCenterRepository;
 import com.kimanga.afyacheck.repository.QuestionRepository;
 import com.kimanga.afyacheck.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -37,6 +39,7 @@ class AdminServiceTest {
     private QuestionRepository questionRepository;
     private AnswerRepository answerRepository;
     private AdminAuditLogRepository adminAuditLogRepository;
+    private HealthCenterRepository healthCenterRepository;
     private AdminService adminService;
 
     @BeforeEach
@@ -45,7 +48,8 @@ class AdminServiceTest {
         questionRepository = mock(QuestionRepository.class);
         answerRepository = mock(AnswerRepository.class);
         adminAuditLogRepository = mock(AdminAuditLogRepository.class);
-        adminService = new AdminService(userRepository, questionRepository, answerRepository, adminAuditLogRepository);
+        healthCenterRepository = mock(HealthCenterRepository.class);
+        adminService = new AdminService(userRepository, questionRepository, answerRepository, adminAuditLogRepository, healthCenterRepository);
     }
 
     @AfterEach
@@ -297,6 +301,86 @@ class AdminServiceTest {
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(existing.getQuestionText()).isEqualTo("New text");
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
+    }
+
+    @Test
+    void getAllHealthCentersReturnsRepositoryResults() {
+        when(healthCenterRepository.findAll()).thenReturn(List.of(new HealthCenter()));
+        assertThat(adminService.getAllHealthCenters()).hasSize(1);
+    }
+
+    @Test
+    void getAllHealthCentersFallsBackToEmptyListOnException() {
+        when(healthCenterRepository.findAll()).thenThrow(new RuntimeException("boom"));
+        assertThat(adminService.getAllHealthCenters()).isEmpty();
+    }
+
+    @Test
+    void addHealthCenterSetsDefaultActiveFlag() {
+        HealthCenter center = new HealthCenter();
+        when(healthCenterRepository.save(any(HealthCenter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ServiceResult<HealthCenter> result = adminService.addHealthCenter(center);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(center.getIsActive()).isTrue();
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
+    }
+
+    @Test
+    void addHealthCenterFailsOnException() {
+        when(healthCenterRepository.save(any())).thenThrow(new RuntimeException("boom"));
+        ServiceResult<HealthCenter> result = adminService.addHealthCenter(new HealthCenter());
+        assertThat(result.isSuccess()).isFalse();
+    }
+
+    @Test
+    void deleteHealthCenterFailsWhenNotFound() {
+        when(healthCenterRepository.findById(1L)).thenReturn(Optional.empty());
+        ServiceResult<Void> result = adminService.deleteHealthCenter(1L);
+        assertThat(result.isSuccess()).isFalse();
+    }
+
+    @Test
+    void deleteHealthCenterSoftDeletesCenter() {
+        HealthCenter center = new HealthCenter();
+        center.setIsActive(true);
+        when(healthCenterRepository.findById(1L)).thenReturn(Optional.of(center));
+
+        ServiceResult<Void> result = adminService.deleteHealthCenter(1L);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(center.getIsActive()).isFalse();
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
+    }
+
+    @Test
+    void updateHealthCenterFailsWhenNotFound() {
+        when(healthCenterRepository.findById(1L)).thenReturn(Optional.empty());
+        ServiceResult<HealthCenter> result = adminService.updateHealthCenter(1L, new HealthCenter());
+        assertThat(result.isSuccess()).isFalse();
+    }
+
+    @Test
+    void updateHealthCenterAppliesNewFields() {
+        HealthCenter existing = new HealthCenter();
+        when(healthCenterRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(healthCenterRepository.save(any(HealthCenter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        HealthCenter updated = new HealthCenter();
+        updated.setName("New Center");
+        updated.setLatitude(-1.28);
+        updated.setLongitude(36.82);
+        updated.setStiTestingAvailable(true);
+        updated.setIsActive(false);
+
+        ServiceResult<HealthCenter> result = adminService.updateHealthCenter(1L, updated);
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(existing.getName()).isEqualTo("New Center");
+        assertThat(existing.getStiTestingAvailable()).isTrue();
+        assertThat(existing.getIsActive()).isFalse();
         verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
     }
 

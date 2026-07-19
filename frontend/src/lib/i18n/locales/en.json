@@ -1,0 +1,16 @@
+{
+  "nav": {
+    "home": "Home",
+    "assessment": "Assessment",
+    "healthCenters": "Health Centers",
+    "about": "About",
+    "faq": "FAQ",
+    "dashboard": "Dashboard",
+    "admin": "Admin",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "language": "Language"
+  }
+}

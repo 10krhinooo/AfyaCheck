@@ -4,6 +4,7 @@ const links = [
   { to: '/app/admin', label: 'Dashboard', end: true },
   { to: '/app/admin/admins', label: 'Admins' },
   { to: '/app/admin/questions', label: 'Questions' },
+  { to: '/app/admin/health-centers', label: 'Health centers' },
   { to: '/app/admin/audit-log', label: 'Audit log' },
 ]
 

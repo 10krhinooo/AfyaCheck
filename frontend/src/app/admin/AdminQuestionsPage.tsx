@@ -63,7 +63,7 @@ export default function AdminQuestionsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="w-full px-6 py-10">
       <h1 className="text-2xl text-ink">Question management</h1>
       <AdminNav />
 

@@ -2,17 +2,21 @@
 
 AfyaCheck is an STI/HIV risk assessment system. Users answer a guided questionnaire, get a machine learning based risk assessment, and can find nearby health centers for follow up care. An admin dashboard lets staff manage users, review questions, and monitor activity.
 
-A React SPA is being incrementally strangler-fig migrated in to replace the legacy Thymeleaf UI — see Architecture below.
+A React SPA is being incrementally strangler-fig migrated in to replace the legacy Thymeleaf UI, see Architecture below.
 
 ## Features
 
 - Authentication via Keycloak (Authorization Code + PKCE from the React SPA), including a themed hosted login/registration/password-reset flow and branded transactional emails (verification, password reset, etc.)
-- Adaptive questionnaire that sequences follow up questions using a decision tree model
-- Risk assessment powered by a machine learning model, with results tied to the user's session
-- Health center finder backed by the Google Maps API
-- Admin dashboard for managing users, questions, and viewing usage statistics
-- Role management — admins can promote or demote any user directly from the admin console; this writes the role to Keycloak itself (the actual source of truth for authorization), not just a local flag
-- Admin audit log — every role change, enable/disable action, question edit, and denied admin-access attempt is recorded with actor, target, and timestamp
+- Adaptive questionnaire that sequences follow up questions using a decision tree model, fully anonymous, with no link between a questionnaire session and an authenticated user
+- Risk assessment powered by a machine learning model, with results tied to the user's session and tagged with the model version that produced them for auditability
+- Self-service data export and deletion for a completed assessment (keyed by the session's own ID, no login required) and an opt-in "email me these results" option
+- Health center finder backed by the Google Maps API, preferring admin-curated centers (name, hours, STI-testing availability) when any are nearby and falling back to a live Places search otherwise
+- Admin dashboard for managing users, questions, health centers, and viewing usage statistics
+- Role management: admins can promote or demote any user directly from the admin console; this writes the role to Keycloak itself (the actual source of truth for authorization), not just a local flag
+- Admin audit log: every role change, enable/disable action, question edit, health-center edit, and denied admin-access attempt is recorded with actor, target, and timestamp
+- Swahili/English language switcher in the nav bar (nav labels so far; questionnaire and results copy are still English-only)
+- Installable as a PWA. The app shell is precached for fast reloads and resilience to brief connectivity drops (not full offline questionnaire completion, since answers still have to reach the backend)
+- Admin-only API docs at `/swagger-ui/index.html` (springdoc), gated the same as the rest of `/api/admin/**`
 
 ## Architecture
 
@@ -25,9 +29,9 @@ The system is made up of four services:
 | ML risk prediction service | `ml-service/` | FastAPI, scikit-learn/XGBoost | Produces the final HIV/STI risk prediction from questionnaire answers |
 | Frontend | `frontend/` | React + Vite (`vite-react-ssg`), TypeScript | SPA under `/app/**`, replacing the legacy Thymeleaf templates route by route |
 
-Identity is owned by Keycloak — see `keycloak/realm-export.json` for the realm/client config and `keycloak/themes/afyacheck/` for the custom login theme (extends Keycloak's built-in `keycloak.v2` theme with AfyaCheck's palette and type) and email theme (branded HTML wrapper shared by every Keycloak-sent email — verify-email, password-reset, execute-actions, etc.).
+Identity is owned by Keycloak. See `keycloak/realm-export.json` for the realm/client config and `keycloak/themes/afyacheck/` for the custom login theme (extends Keycloak's built-in `keycloak.v2` theme with AfyaCheck's palette and type) and email theme (branded HTML wrapper shared by every Keycloak-sent email: verify-email, password-reset, execute-actions, etc.).
 
-The backend also holds a confidential `afyacheck-backend` Keycloak client with a service account (`KeycloakAdminService`), used only to assign/remove realm roles when an admin changes a user's role from the admin console — it's never used for a login flow.
+The backend also holds a confidential `afyacheck-backend` Keycloak client with a service account (`KeycloakAdminService`), used only to assign/remove realm roles when an admin changes a user's role from the admin console. It's never used for a login flow.
 
 ## Prerequisites
 
@@ -53,7 +57,7 @@ docker compose up -d
 Starts Keycloak on `http://localhost:8180` (admin console: `admin` / `admin`) and imports the
 `afyacheck` realm, the `afyacheck-spa` and `afyacheck-backend` clients, and a seed admin user from
 `keycloak/realm-export.json`, along with the custom login/email themes in
-`keycloak/themes/afyacheck/`. This is a dev-only setup — a real deployment runs Keycloak against
+`keycloak/themes/afyacheck/`. This is a dev-only setup, a real deployment runs Keycloak against
 Postgres with proper secrets, not `start-dev`'s ephemeral storage (nothing is persisted across
 `docker compose down`/`--force-recreate`).
 
@@ -63,7 +67,7 @@ Seed admin login for the app itself (not the Keycloak admin console above): `adm
 
 Create a `.env` file in the repo root (see `src/main/resources/application.properties.example`
 for the full list of names) and fill in real values. It's loaded automatically into Spring's
-environment at startup via the `spring-dotenv` dependency — no manual export step needed.
+environment at startup via the `spring-dotenv` dependency, no manual export step needed.
 
 Required variables:
 
@@ -79,16 +83,16 @@ Required variables:
 
 Optional:
 
-- `PYTHON_EXECUTABLE_PATH` — defaults to a Windows path (`C:/Python314/python.exe`); override to your platform's interpreter (e.g. `/usr/bin/python3` on Linux/macOS) if `PythonServiceManager` fails to start the two Python services below.
+- `PYTHON_EXECUTABLE_PATH`: defaults to a Windows path (`C:/Python314/python.exe`); override to your platform's interpreter (e.g. `/usr/bin/python3` on Linux/macOS) if `PythonServiceManager` fails to start the two Python services below.
 
 The two Python services are not auto-started by the backend (`ml.service.auto.start` /
-`decision.tree.service.auto.start` both default `false`) — start them manually before hitting
+`decision.tree.service.auto.start` both default `false`), start them manually before hitting
 endpoints that depend on them.
 
 ### 4. Python services
 
 Both scripts call `uvicorn.run(..., reload=True)` when run directly, which requires an
-import-string app reference — run them via the uvicorn CLI instead:
+import-string app reference. Run them via the uvicorn CLI instead:
 
 ```bash
 cd python-service

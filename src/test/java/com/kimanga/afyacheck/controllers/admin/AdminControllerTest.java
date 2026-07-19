@@ -2,6 +2,7 @@ package com.kimanga.afyacheck.controllers.admin;
 
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import com.kimanga.afyacheck.DTO.admin.DashboardStats;
+import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.service.AdminService;
 import com.kimanga.afyacheck.service.UserService;
@@ -162,6 +163,106 @@ class AdminControllerTest {
         when(adminService.updateQuestion(eq(1L), any())).thenReturn(ServiceResult.failure("bad update"));
 
         ResponseEntity<?> response = controller.updateQuestion(1L, new Question());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void healthCentersReturnsAllCenters() {
+        when(adminService.getAllHealthCenters()).thenReturn(List.of(new HealthCenter()));
+
+        ResponseEntity<?> response = controller.healthCenters();
+
+        var body = (AdminController.HealthCentersResponse) response.getBody();
+        assertThat(body.healthCenters()).hasSize(1);
+    }
+
+    @Test
+    void healthCentersReturns500OnException() {
+        when(adminService.getAllHealthCenters()).thenThrow(new RuntimeException("boom"));
+
+        ResponseEntity<?> response = controller.healthCenters();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void addHealthCenterReturnsOkOnSuccess() {
+        when(adminService.addHealthCenter(any())).thenReturn(ServiceResult.success("added", new HealthCenter()));
+
+        ResponseEntity<?> response = controller.addHealthCenter(new HealthCenter());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void addHealthCenterReturns500OnException() {
+        when(adminService.addHealthCenter(any())).thenThrow(new RuntimeException("boom"));
+
+        ResponseEntity<?> response = controller.addHealthCenter(new HealthCenter());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void addHealthCenterReturnsBadRequestOnFailureResult() {
+        when(adminService.addHealthCenter(any())).thenReturn(ServiceResult.failure("invalid center"));
+
+        ResponseEntity<?> response = controller.addHealthCenter(new HealthCenter());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void deleteHealthCenterReturnsOkOnSuccess() {
+        when(adminService.deleteHealthCenter(1L)).thenReturn(ServiceResult.success("deleted", null));
+
+        ResponseEntity<?> response = controller.deleteHealthCenter(new AdminController.DeleteHealthCenterRequest(1L));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void deleteHealthCenterReturns500OnException() {
+        when(adminService.deleteHealthCenter(1L)).thenThrow(new RuntimeException("boom"));
+
+        ResponseEntity<?> response = controller.deleteHealthCenter(new AdminController.DeleteHealthCenterRequest(1L));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void deleteHealthCenterReturnsBadRequestOnFailureResult() {
+        when(adminService.deleteHealthCenter(1L)).thenReturn(ServiceResult.failure("not found"));
+
+        ResponseEntity<?> response = controller.deleteHealthCenter(new AdminController.DeleteHealthCenterRequest(1L));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void updateHealthCenterReturnsOkOnSuccess() {
+        when(adminService.updateHealthCenter(eq(1L), any())).thenReturn(ServiceResult.success("updated", new HealthCenter()));
+
+        ResponseEntity<?> response = controller.updateHealthCenter(1L, new HealthCenter());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void updateHealthCenterReturns500OnException() {
+        when(adminService.updateHealthCenter(eq(1L), any())).thenThrow(new RuntimeException("boom"));
+
+        ResponseEntity<?> response = controller.updateHealthCenter(1L, new HealthCenter());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void updateHealthCenterReturnsBadRequestOnFailureResult() {
+        when(adminService.updateHealthCenter(eq(1L), any())).thenReturn(ServiceResult.failure("bad update"));
+
+        ResponseEntity<?> response = controller.updateHealthCenter(1L, new HealthCenter());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }

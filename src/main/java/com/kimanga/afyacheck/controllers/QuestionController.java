@@ -151,7 +151,8 @@ public class QuestionController {
                     sessionId,
                     (String) nextStep.get("riskLevel"),
                     (Integer) nextStep.get("riskScore"),
-                    (String) nextStep.get("recommendations"));
+                    (String) nextStep.get("recommendations"),
+                    (String) nextStep.get("modelVersion"));
 
             body.put("riskScore", nextStep.get("riskScore"));
             body.put("riskLevel", nextStep.get("riskLevel"));
@@ -168,7 +169,8 @@ public class QuestionController {
                     sessionId,
                     (String) riskAssessment.get("riskLevel"),
                     (Integer) riskAssessment.get("riskScore"),
-                    (String) riskAssessment.get("recommendations"));
+                    (String) riskAssessment.get("recommendations"),
+                    (String) riskAssessment.get("modelVersion"));
 
             body.put("riskScore", riskAssessment.get("riskScore"));
             body.put("riskLevel", riskAssessment.get("riskLevel"));
@@ -224,16 +226,6 @@ public class QuestionController {
             return new ArrayList<>();
         }
         return Arrays.asList(optionsString.split(","));
-    }
-
-    @GetMapping("/debug/database-status")
-    public Map<String, Object> debugDatabaseStatus() {
-        return decisionService.debugDatabaseStatus();
-    }
-
-    @GetMapping("/debug/questions")
-    public Map<String, Object> debugQuestions() {
-        return decisionService.debugQuestionDatabase();
     }
 
     // Separate REST surface for the decision-tree JSON contract used directly by other

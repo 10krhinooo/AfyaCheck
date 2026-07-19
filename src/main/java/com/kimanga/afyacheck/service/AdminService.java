@@ -5,6 +5,7 @@ import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.DTO.admin.UserDTO;
 import com.kimanga.afyacheck.model.AdminAuditLog;
 import com.kimanga.afyacheck.model.Answer;
+import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.repository.*;
@@ -25,6 +26,7 @@ public class AdminService {
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final AdminAuditLogRepository adminAuditLogRepository;
+    private final HealthCenterRepository healthCenterRepository;
     // Remove sessionRepository dependency since we're not using it
 
     public DashboardStats getDashboardStats() {
@@ -286,6 +288,70 @@ public class AdminService {
 
         } catch (Exception e) {
             return ServiceResult.failure("Error updating question: " + e.getMessage());
+        }
+    }
+
+    public List<HealthCenter> getAllHealthCenters() {
+        try {
+            return healthCenterRepository.findAll();
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    public ServiceResult<HealthCenter> addHealthCenter(HealthCenter healthCenter) {
+        try {
+            if (healthCenter.getIsActive() == null) {
+                healthCenter.setIsActive(true);
+            }
+            HealthCenter saved = healthCenterRepository.save(healthCenter);
+            logAction("ADD_HEALTH_CENTER", "HEALTH_CENTER", String.valueOf(saved.getId()), saved.getName());
+            return ServiceResult.success("Health center added successfully", saved);
+        } catch (Exception e) {
+            return ServiceResult.failure("Error adding health center: " + e.getMessage());
+        }
+    }
+
+    public ServiceResult<Void> deleteHealthCenter(Long healthCenterId) {
+        try {
+            HealthCenter healthCenter = healthCenterRepository.findById(healthCenterId).orElse(null);
+            if (healthCenter == null) {
+                return ServiceResult.failure("Health center not found");
+            }
+
+            healthCenter.setIsActive(false);
+            healthCenterRepository.save(healthCenter);
+            logAction("DELETE_HEALTH_CENTER", "HEALTH_CENTER", String.valueOf(healthCenterId), healthCenter.getName());
+            return ServiceResult.success("Health center deleted successfully", null);
+        } catch (Exception e) {
+            return ServiceResult.failure("Error deleting health center: " + e.getMessage());
+        }
+    }
+
+    public ServiceResult<HealthCenter> updateHealthCenter(Long healthCenterId, HealthCenter updated) {
+        try {
+            HealthCenter healthCenter = healthCenterRepository.findById(healthCenterId).orElse(null);
+            if (healthCenter == null) {
+                return ServiceResult.failure("Health center not found");
+            }
+
+            healthCenter.setName(updated.getName());
+            healthCenter.setAddress(updated.getAddress());
+            healthCenter.setLatitude(updated.getLatitude());
+            healthCenter.setLongitude(updated.getLongitude());
+            healthCenter.setPhone(updated.getPhone());
+            healthCenter.setHours(updated.getHours());
+            healthCenter.setServices(updated.getServices());
+            healthCenter.setStiTestingAvailable(updated.getStiTestingAvailable());
+            if (updated.getIsActive() != null) {
+                healthCenter.setIsActive(updated.getIsActive());
+            }
+
+            HealthCenter saved = healthCenterRepository.save(healthCenter);
+            logAction("UPDATE_HEALTH_CENTER", "HEALTH_CENTER", String.valueOf(healthCenterId), null);
+            return ServiceResult.success("Health center updated successfully", saved);
+        } catch (Exception e) {
+            return ServiceResult.failure("Error updating health center: " + e.getMessage());
         }
     }
 

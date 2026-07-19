@@ -30,7 +30,7 @@ export default function AdminAuditLogPage() {
   useEffect(load, [])
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="w-full px-6 py-10">
       <h1 className="font-display text-2xl text-ink">Audit log</h1>
       <AdminNav />
 

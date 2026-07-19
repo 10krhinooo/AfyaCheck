@@ -49,6 +49,7 @@ class PredictionResponse(BaseModel):
     recommendations: List[str]
     confidence: float
     modelUsed: bool
+    modelVersion: str
     featuresUsed: int
     featureValues: Dict[str, str]
     timestamp: str
@@ -129,9 +130,29 @@ class HIVRiskPredictor:
         self.condom_use_mapping = {'never': 2, 'sometimes': 1, 'always': 0}  # FIXED: Always = lowest risk
         self.yes_no_mapping = {'no': 0, 'yes': 1}
 
+        self.model_version = self._compute_model_version()
+
         logger.info(f"HIVRiskPredictor initialized in '{self.mode}' mode")
         logger.info(f"Model loaded: {self.model is not None}")
         logger.info(f"Feature columns: {len(self.feature_columns)}")
+        logger.info(f"Model version: {self.model_version}")
+
+    def _compute_model_version(self) -> str:
+        """
+        A stable identifier for whichever model actually produced a prediction, persisted
+        onto RiskAssessment on the Java side so every stored result is traceable to the
+        model that produced it. Derived from the loaded artifact's file mtime rather than a
+        hand-maintained version string, since there's no training pipeline that bumps one.
+        """
+        if self.mode == 'kenphia':
+            try:
+                mtime = os.path.getmtime('kenphia_ensemble.pkl')
+                return f"kenphia-ensemble-{datetime.fromtimestamp(mtime).strftime('%Y%m%d')}"
+            except OSError:
+                return "kenphia-ensemble-unknown"
+        if self.model is not None:
+            return f"legacy-{type(self.model).__name__.lower()}"
+        return "legacy-unavailable"
 
     def _verify_model_integrity(self, model_path: str) -> bool:
         """
@@ -587,7 +608,8 @@ class HIVRiskPredictor:
                 'riskScore': risk_score,
                 'confidence': confidence,
                 'features_used': features_used,
-                'model_used': True
+                'model_used': True,
+                'model_version': self.model_version
             }
         except Exception as e:
             logger.error(f"Prediction error: {e}")
@@ -607,7 +629,8 @@ class HIVRiskPredictor:
                 'riskScore': 5,
                 'confidence': 0.90,
                 'features_used': 0,
-                'model_used': False
+                'model_used': False,
+                'model_version': 'rule-based-fallback-v1'
             }
 
         # Only calculate risk if sexually active
@@ -668,7 +691,8 @@ class HIVRiskPredictor:
             'riskScore': risk_score,
             'confidence': 0.75,
             'features_used': 0,
-            'model_used': False
+            'model_used': False,
+            'model_version': 'rule-based-fallback-v1'
         }
 
 # Initialize predictor -- tries the full KENPHIA ensemble first, then falls
@@ -805,6 +829,7 @@ async def predict(request: PredictionRequest):
             recommendations=recommendations,
             confidence=prediction['confidence'],
             modelUsed=prediction['model_used'],
+            modelVersion=prediction.get('model_version', 'unknown'),
             featuresUsed=prediction['features_used'],
             featureValues=answers,
             timestamp=datetime.now().isoformat()
@@ -825,6 +850,7 @@ async def predict(request: PredictionRequest):
             recommendations=[],
             confidence=0.0,
             modelUsed=False,
+            modelVersion="unknown",
             featuresUsed=0,
             featureValues={}
         )
@@ -895,6 +921,7 @@ async def get_model_info():
     model_info = {
         "model_loaded": predictor.model is not None,
         "model_mode": predictor.mode,
+        "model_version": predictor.model_version,
         "model_type": str(type(predictor.model).__name__) if predictor.model else None,
         "feature_columns": predictor.feature_columns if predictor.mode != 'kenphia' else None,
         "feature_count": len(predictor.feature_columns),

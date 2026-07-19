@@ -1,0 +1,16 @@
+{
+  "nav": {
+    "home": "Nyumbani",
+    "assessment": "Tathmini",
+    "healthCenters": "Vituo vya Afya",
+    "about": "Kuhusu",
+    "faq": "Maswali",
+    "dashboard": "Dashibodi",
+    "admin": "Msimamizi",
+    "signIn": "Ingia",
+    "signOut": "Toka",
+    "openMenu": "Fungua menyu",
+    "closeMenu": "Funga menyu",
+    "language": "Lugha"
+  }
+}
