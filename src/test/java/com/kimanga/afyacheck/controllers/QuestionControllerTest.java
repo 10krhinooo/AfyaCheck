@@ -262,18 +262,6 @@ class QuestionControllerTest {
     }
 
     @Test
-    void debugDatabaseStatusDelegatesToDecisionService() {
-        when(decisionService.debugDatabaseStatus()).thenReturn(Map.of("ok", true));
-        assertThat(controller.debugDatabaseStatus()).containsEntry("ok", true);
-    }
-
-    @Test
-    void debugQuestionsDelegatesToDecisionService() {
-        when(decisionService.debugQuestionDatabase()).thenReturn(Map.of("count", 5));
-        assertThat(controller.debugQuestions()).containsEntry("count", 5);
-    }
-
-    @Test
     void questionApiControllerNextDelegatesToDecisionService() {
         QuestionController.QuestionApiController api = new QuestionController.QuestionApiController(decisionService);
         when(decisionService.getNextQuestion(any())).thenReturn(Map.of("key", "q1"));

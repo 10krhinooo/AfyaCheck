@@ -228,16 +228,6 @@ public class QuestionController {
         return Arrays.asList(optionsString.split(","));
     }
 
-    @GetMapping("/debug/database-status")
-    public Map<String, Object> debugDatabaseStatus() {
-        return decisionService.debugDatabaseStatus();
-    }
-
-    @GetMapping("/debug/questions")
-    public Map<String, Object> debugQuestions() {
-        return decisionService.debugQuestionDatabase();
-    }
-
     // Separate REST surface for the decision-tree JSON contract used directly by other
     // clients (independent of the /api/questionnaire/* session-tracked flow above).
     @RestController
