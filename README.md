@@ -127,6 +127,17 @@ npm run dev
 Starts the Vite dev server, which proxies `/api/**` to `http://localhost:8080` and talks to
 Keycloak directly on `:8180`.
 
+## Full stack via Docker
+
+```bash
+docker compose --profile full up -d --build
+```
+
+Builds and starts everything: Postgres (`:5434`), Keycloak (`:8180`), both Python services
+(`:8000`/`:8001`), and the backend jar with the bundled SPA (`http://localhost:8080`). The
+plain `docker compose up -d` (no profile) still starts only Keycloak for the local-dev
+workflow above.
+
 ## Running tests
 
 ```bash

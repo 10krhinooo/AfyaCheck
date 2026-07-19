@@ -2,6 +2,7 @@ import { Check } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Button } from '../../components/Button'
 import { TextField } from '../../components/TextField'
+import { useTranslation } from '../../lib/i18n'
 import type { Question } from '../../lib/types'
 
 export function QuestionForm({
@@ -14,6 +15,15 @@ export function QuestionForm({
   onSubmit: (value: string) => void
 }) {
   const [value, setValue] = useState('')
+  const { t } = useTranslation()
+
+  // Option VALUES are canonical English (the ML pipeline's inputs); only the LABEL is
+  // translated. t() returns the key itself when no translation exists, so fall back to
+  // showing the raw option value in that case (and always in English).
+  function optionLabel(option: string): string {
+    const translated = t(`options.${option}`)
+    return translated === `options.${option}` ? option : translated
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -40,7 +50,7 @@ export function QuestionForm({
                 onChange={(e) => setValue(e.target.value)}
                 className="peer h-4 w-4 accent-teal-600"
               />
-              <span>{option}</span>
+              <span>{optionLabel(option)}</span>
               <Check aria-hidden="true" size={18} className="absolute right-4 hidden text-teal-600 peer-checked:block" />
             </label>
           ))}
@@ -77,7 +87,7 @@ export function QuestionForm({
         disabled={value.trim() === ''}
         className="mt-6 w-full sm:w-auto"
       >
-        Continue
+        {t('questionnaire.continue')}
       </Button>
     </form>
   )

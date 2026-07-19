@@ -3,8 +3,10 @@ import { Button } from '../../components/Button'
 import { TextField } from '../../components/TextField'
 import { StatusMessage } from '../../components/StatusMessage'
 import { apiPost } from '../../lib/api-client'
+import { useTranslation } from '../../lib/i18n'
 
 export function EmailResultsForm({ sessionId }: { sessionId: string }) {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [sending, setSending] = useState(false)
   const [status, setStatus] = useState<'idle' | 'sent' | 'error'>('idle')
@@ -22,7 +24,7 @@ export function EmailResultsForm({ sessionId }: { sessionId: string }) {
       setStatus('sent')
     } catch (err) {
       setStatus('error')
-      setErrorMessage(err instanceof Error ? err.message : 'We couldn’t send that. Please try again.')
+      setErrorMessage(err instanceof Error ? err.message : t('results.sendError'))
     } finally {
       setSending(false)
     }
@@ -30,7 +32,7 @@ export function EmailResultsForm({ sessionId }: { sessionId: string }) {
 
   if (status === 'sent') {
     return (
-      <StatusMessage tone="success">Sent — check your inbox for a copy of your results.</StatusMessage>
+      <StatusMessage tone="success">{t('results.sent')}</StatusMessage>
     )
   }
 
@@ -38,7 +40,7 @@ export function EmailResultsForm({ sessionId }: { sessionId: string }) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
       <div className="flex-1">
         <TextField
-          label="Email me these results"
+          label={t('results.emailLabel')}
           type="email"
           placeholder="you@example.com"
           value={email}
@@ -47,7 +49,7 @@ export function EmailResultsForm({ sessionId }: { sessionId: string }) {
         />
       </div>
       <Button type="submit" variant="secondary" loading={sending} disabled={email.trim() === ''}>
-        Send
+        {t('results.send')}
       </Button>
       {status === 'error' && errorMessage && (
         <div className="sm:basis-full">

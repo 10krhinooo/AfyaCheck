@@ -34,4 +34,9 @@ public interface RiskAssessmentRepository extends JpaRepository<RiskAssessment, 
 
     // Delete all risk assessments for a session
     void deleteBySession_SessionId(String sessionId);
+
+    // Bulk retention purge (DataRetentionService) — must run before the Session bulk delete.
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM RiskAssessment ra WHERE ra.session IN (SELECT s FROM Session s WHERE s.createdAt < :cutoff)")
+    int deleteBySessionCreatedAtBefore(@Param("cutoff") java.util.Date cutoff);
 }

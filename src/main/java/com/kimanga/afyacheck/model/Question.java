@@ -27,6 +27,18 @@ public class Question {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    // Swahili variants (V8). Null means untranslated — API falls back to English. Option
+    // values are NOT translated: they're canonical inputs to the ML pipeline; the frontend
+    // translates option labels client-side.
+    @Column(name = "question_text_sw", columnDefinition = "TEXT")
+    private String questionTextSw;
+
+    @Column(name = "description_sw", columnDefinition = "TEXT")
+    private String descriptionSw;
+
+    @Column(name = "section_title_sw")
+    private String sectionTitleSw;
+
     @Column(name = "question_type", nullable = false)
     private String questionType; // yes_no, multiple_choice, number, text, choice
 

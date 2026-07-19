@@ -92,8 +92,10 @@ tasks.register('buildFrontend', Exec) {
 processResources {
     if (includeFrontend) {
         dependsOn 'buildFrontend'
-        from('frontend/dist') { into 'static' }
     }
+    // Copied even with -PskipFrontend when a prebuilt dist exists (e.g. the Docker build's
+    // Node stage produced it); a missing dir is silently skipped.
+    from('frontend/dist') { into 'static' }
 }
 
 tasks.named('test') {

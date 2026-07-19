@@ -68,8 +68,10 @@ import-string app reference and will crash on the reload check. Run them via the
 instead: `uvicorn app:app --host 0.0.0.0 --port 8000` / `uvicorn decision_tree_service:app --host
 0.0.0.0 --port 8001`.
 
-No pytest suite exists for either service yet. CI only does a `python -m py_compile` sanity
-check on the entrypoint.
+Each service has a pytest contract suite (`ml-service/test_app.py`,
+`python-service/test_decision_tree_service.py`) that runs against the real app + real model
+artifacts; CI runs `python -m pytest` per service (deps in `requirements-dev.txt`). Run them
+from inside the service directory so relative model paths resolve.
 
 ### Frontend (React + Vite, run from `frontend/`)
 

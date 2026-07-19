@@ -105,22 +105,18 @@ jobs:
           cache-dependency-path: ${{ matrix.service }}/requirements.txt
 
       - name: Install dependencies
-        run: pip install -r ${{ matrix.service }}/requirements.txt
+        run: pip install -r ${{ matrix.service }}/requirements.txt -r ${{ matrix.service }}/requirements-dev.txt
 
       - name: Audit dependencies for known CVEs
         run: |
           pip install pip-audit
           pip-audit -r ${{ matrix.service }}/requirements.txt
 
-      # No pytest suite exists yet for these services — this is a best-effort
-      # syntax/import sanity check. Replace with `pytest` once tests are added.
-      - name: Sanity-check ml-service entrypoint
-        if: matrix.service == 'ml-service'
-        run: python -m py_compile ml-service/app.py
-
-      - name: Sanity-check python-service entrypoint
-        if: matrix.service == 'python-service'
-        run: python -m py_compile python-service/decision_tree_service.py
+      # Contract tests run against the real app + real model artifacts, so they catch
+      # model-loading regressions as well as API-shape drift.
+      - name: Run tests
+        working-directory: ${{ matrix.service }}
+        run: python -m pytest -q
 
   frontend:
     runs-on: ubuntu-latest

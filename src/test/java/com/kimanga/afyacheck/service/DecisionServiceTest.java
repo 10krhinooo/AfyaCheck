@@ -104,6 +104,32 @@ class DecisionServiceTest {
     }
 
     @Test
+    void getNextQuestionReturnsSwahiliTextWhenLocaleIsSwahiliAndFallsBackWhenUntranslated() {
+        Question translated = question("age", "number");
+        translated.setQuestionTextSw("Una umri gani?");
+        translated.setSectionTitleSw("Taarifa Binafsi");
+        // descriptionSw left null -> English fallback per-field
+        when(questionRepository.findByIsActiveTrue()).thenReturn(List.of(translated));
+        when(decisionTreeClient.getNextQuestion(eq("sid-sw"), any(), any())).thenReturn("age");
+        when(questionRepository.findByQuestionKeyAndIsActiveTrue("age")).thenReturn(Optional.of(translated));
+        when(questionRepository.countByIsActiveTrue()).thenReturn(5L);
+
+        Map<String, String> answers = new HashMap<>();
+        answers.put("_sessionId", "sid-sw");
+        answers.put("consent", "Yes");
+
+        org.springframework.context.i18n.LocaleContextHolder.setLocale(java.util.Locale.of("sw"));
+        try {
+            Map<String, Object> result = decisionService.getNextQuestion(answers);
+            assertThat(result.get("text")).isEqualTo("Una umri gani?");
+            assertThat(result.get("sectionTitle")).isEqualTo("Taarifa Binafsi");
+            assertThat(result.get("description")).isEqualTo("Desc");
+        } finally {
+            org.springframework.context.i18n.LocaleContextHolder.resetLocaleContext();
+        }
+    }
+
+    @Test
     void getNextQuestionEndsSurveyWhenDecisionTreeReturnsNull() {
         when(questionRepository.findByIsActiveTrue()).thenReturn(List.of());
         when(decisionTreeClient.getNextQuestion(eq("sid-5"), any(), any())).thenReturn(null);

@@ -208,11 +208,21 @@ public class DecisionService {
     private Map<String, Object> convertQuestionToMap(Question question) {
         Map<String, Object> questionMap = new HashMap<>();
 
+        // Locale is resolved by Spring MVC from the request's Accept-Language header
+        // (LocaleContextHolder). Swahili falls back to English per-field when a
+        // translation is missing. Option values stay canonical (English) — they feed the
+        // ML pipeline; the frontend translates option labels for display.
+        boolean swahili = "sw".equals(
+                org.springframework.context.i18n.LocaleContextHolder.getLocale().getLanguage());
+
         questionMap.put("key", question.getQuestionKey());
-        questionMap.put("text", question.getQuestionText());
-        questionMap.put("description", question.getDescription());
+        questionMap.put("text", swahili && question.getQuestionTextSw() != null
+                ? question.getQuestionTextSw() : question.getQuestionText());
+        questionMap.put("description", swahili && question.getDescriptionSw() != null
+                ? question.getDescriptionSw() : question.getDescription());
         questionMap.put("type", mapQuestionType(question.getQuestionType()));
-        questionMap.put("sectionTitle", question.getSectionTitle());
+        questionMap.put("sectionTitle", swahili && question.getSectionTitleSw() != null
+                ? question.getSectionTitleSw() : question.getSectionTitle());
         questionMap.put("displayOrder", question.getDisplayOrder());
 
         String optionsString = parseOptionsToString(question.getOptions(), question.getQuestionType());

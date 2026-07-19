@@ -12,11 +12,11 @@ interface State {
   result: QuestionnaireEndResponse | null
 }
 
-// User-facing copy for each failure point, always paired with a concrete next step
-// (offered via the caller's retry/goBack action) rather than the raw fetch error text.
-const START_ERROR = 'We couldn’t load your assessment. Check your connection and try again.'
-const SUBMIT_ERROR = 'We couldn’t save your answer. Check your connection and try again.'
-const BACK_ERROR = 'We couldn’t go back to the previous question. Check your connection and try again.'
+// i18n keys for each failure point (rendered via t() by the page), always paired with a
+// concrete next step (retry/goBack) rather than the raw fetch error text.
+const START_ERROR = 'questionnaire.startError'
+const SUBMIT_ERROR = 'questionnaire.submitError'
+const BACK_ERROR = 'questionnaire.backError'
 
 export function useQuestionnaire() {
   const [state, setState] = useState<State>({

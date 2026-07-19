@@ -30,6 +30,13 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
     // Find sessions by status
     List<Session> findByStatus(String status);
 
+    // Bulk retention purge (DataRetentionService). Children are deleted first via the
+    // Answer/RiskAssessment repos' bulk deletes — JPQL bulk deletes bypass entity-level
+    // cascades, so ordering is the caller's responsibility.
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM Session s WHERE s.createdAt < :cutoff")
+    int deleteByCreatedAtBefore(@Param("cutoff") Date cutoff);
+
     // Check if session exists
     boolean existsBySessionId(String sessionId);
 

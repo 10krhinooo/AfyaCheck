@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { Button } from '../../components/Button'
 import { StatusMessage } from '../../components/StatusMessage'
 import { apiDelete, apiFetch } from '../../lib/api-client'
+import { useTranslation } from '../../lib/i18n'
 import { clearStoredResult } from './resultStorage'
 
 export function DataControls({ sessionId }: { sessionId: string }) {
+  const { t } = useTranslation()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleted, setDeleted] = useState(false)
@@ -24,7 +26,7 @@ export function DataControls({ sessionId }: { sessionId: string }) {
       link.click()
       URL.revokeObjectURL(url)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'We couldn’t download your data. Please try again.')
+      setError(err instanceof Error ? err.message : t('results.downloadError'))
     } finally {
       setDownloading(false)
     }
@@ -38,23 +40,20 @@ export function DataControls({ sessionId }: { sessionId: string }) {
       clearStoredResult(sessionId)
       setDeleted(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'We couldn’t delete your data. Please try again.')
+      setError(err instanceof Error ? err.message : t('results.deleteError'))
     } finally {
       setDeleting(false)
     }
   }
 
   if (deleted) {
-    return <StatusMessage tone="success">Your data has been deleted.</StatusMessage>
+    return <StatusMessage tone="success">{t('results.deleted')}</StatusMessage>
   }
 
   return (
     <div>
-      <h2 className="text-lg text-ink">Your data</h2>
-      <p className="mt-2 text-sm text-ink-soft">
-        Download a copy of the answers and results tied to this assessment, or delete them
-        permanently.
-      </p>
+      <h2 className="text-lg text-ink">{t('results.yourData')}</h2>
+      <p className="mt-2 text-sm text-ink-soft">{t('results.yourDataHint')}</p>
 
       {error && (
         <div className="mt-3">
@@ -64,27 +63,27 @@ export function DataControls({ sessionId }: { sessionId: string }) {
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <Button variant="secondary" onClick={downloadData} loading={downloading}>
-          Download my data
+          {t('results.download')}
         </Button>
 
         {confirmingDelete ? (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-ink-soft">Delete permanently?</span>
+            <span className="text-sm text-ink-soft">{t('results.deleteConfirm')}</span>
             <Button
               variant="ghost"
               className="text-coral-700 hover:opacity-80"
               onClick={deleteData}
               loading={deleting}
             >
-              Yes, delete
+              {t('results.deleteYes')}
             </Button>
             <Button variant="ghost" onClick={() => setConfirmingDelete(false)} disabled={deleting}>
-              Cancel
+              {t('results.cancel')}
             </Button>
           </div>
         ) : (
           <Button variant="ghost" className="text-coral-700 hover:opacity-80" onClick={() => setConfirmingDelete(true)}>
-            Delete my data
+            {t('results.delete')}
           </Button>
         )}
       </div>
