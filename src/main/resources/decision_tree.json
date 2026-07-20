@@ -246,7 +246,7 @@
         {
           "condition": "previous_sti == 'no' || previous_sti == null",
           "action": "goto",
-          "next": "hiv_test_node"
+          "next": "hiv_tested_node"
         }
       ]
     },
@@ -262,7 +262,7 @@
         {
           "condition": "sti_treatment == 'yes'",
           "action": "goto",
-          "next": "hiv_test_node"
+          "next": "hiv_tested_node"
         }
       ]
     },
@@ -272,29 +272,29 @@
         {
           "condition": "true",
           "action": "goto",
-          "next": "hiv_test_node"
+          "next": "hiv_tested_node"
         }
       ]
     },
-    "hiv_test_node": {
-      "node_id": "hiv_test_node",
-      "question_key": "hiv_test",
+    "hiv_tested_node": {
+      "node_id": "hiv_tested_node",
+      "question_key": "hiv_tested",
       "children": [
         {
-          "condition": "hiv_test == 'yes'",
+          "condition": "hiv_tested == 'yes'",
           "action": "goto",
-          "next": "last_hiv_test_node"
+          "next": "last_hiv_tested_node"
         },
         {
-          "condition": "hiv_test == 'no' || hiv_test == null",
+          "condition": "hiv_tested == 'no' || hiv_tested == null",
           "action": "goto",
           "next": "gender_specific_routing_active"
         }
       ]
     },
-    "last_hiv_test_node": {
-      "node_id": "last_hiv_test_node",
-      "question_key": "last_hiv_test",
+    "last_hiv_tested_node": {
+      "node_id": "last_hiv_tested_node",
+      "question_key": "last_hiv_tested",
       "children": [
         {
           "condition": "true",
