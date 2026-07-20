@@ -72,17 +72,7 @@ public class SecurityConfig {
                 // CookieCsrfTokenRepository only writes the cookie once something actually reads
                 // the deferred CsrfToken; without forcing that read here, a browser's first
                 // (GET) page load never receives the cookie, so the first POST/DELETE 403s.
-                .addFilterAfter(new OncePerRequestFilter() {
-                    @Override
-                    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                            FilterChain filterChain) throws ServletException, IOException {
-                        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
-                        if (csrfToken != null) {
-                            csrfToken.getToken();
-                        }
-                        filterChain.doFilter(request, response);
-                    }
-                }, BearerTokenAuthenticationFilter.class)
+                .addFilterAfter(new CsrfCookieFilter(), BearerTokenAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions.accessDeniedHandler(auditingAccessDeniedHandler))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
@@ -199,6 +189,23 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    /**
+     * Forces the deferred {@link CsrfToken} to render into its cookie on every request (see the
+     * comment above where this is registered) -- package-private and static so it can be unit
+     * tested directly instead of only ever running inside a full Spring Security filter chain.
+     */
+    static class CsrfCookieFilter extends OncePerRequestFilter {
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                FilterChain filterChain) throws ServletException, IOException {
+            CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+            if (csrfToken != null) {
+                csrfToken.getToken();
+            }
+            filterChain.doFilter(request, response);
+        }
     }
 
     /**
