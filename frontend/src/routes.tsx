@@ -4,6 +4,8 @@ import Landing from './pages/landing/Landing'
 import CallbackPage from './lib/auth/CallbackPage'
 import About from './pages/about/About'
 import Faq from './pages/faq/Faq'
+import Learn from './pages/learn/Learn'
+import LearnTopic from './pages/learn/LearnTopic'
 import PrivacyPolicy from './pages/legal/PrivacyPolicy'
 import TermsOfService from './pages/legal/TermsOfService'
 import NotFound from './pages/not-found/NotFound'
@@ -26,6 +28,8 @@ export const routes: RouteRecord[] = [
       { index: true, element: <Landing /> },
       { path: 'about', element: <About /> },
       { path: 'faq', element: <Faq /> },
+      { path: 'learn', element: <Learn /> },
+      { path: 'learn/:slug', element: <LearnTopic /> },
       { path: 'privacy', element: <PrivacyPolicy /> },
       { path: 'terms', element: <TermsOfService /> },
       // Silent OIDC redirect, no visual UI worth the shared chrome, so NavBar/Footer hide

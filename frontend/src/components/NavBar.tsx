@@ -50,6 +50,7 @@ export function NavBar() {
     { to: '/', label: t('nav.home'), end: true },
     { to: '/app/questionnaire', label: t('nav.assessment') },
     { to: '/app/health-centers', label: t('nav.healthCenters') },
+    { to: '/learn', label: t('nav.learn') },
     { to: '/about', label: t('nav.about') },
     { to: '/faq', label: t('nav.faq') },
   ]
