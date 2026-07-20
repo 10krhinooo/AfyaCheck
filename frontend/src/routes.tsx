@@ -4,6 +4,8 @@ import Landing from './pages/landing/Landing'
 import CallbackPage from './lib/auth/CallbackPage'
 import About from './pages/about/About'
 import Faq from './pages/faq/Faq'
+import Learn from './pages/learn/Learn'
+import LearnTopic from './pages/learn/LearnTopic'
 import PrivacyPolicy from './pages/legal/PrivacyPolicy'
 import TermsOfService from './pages/legal/TermsOfService'
 import NotFound from './pages/not-found/NotFound'
@@ -12,7 +14,7 @@ import NotFound from './pages/not-found/NotFound'
 // (see vite.config.ts ssgOptions.includedRoutes) since they carry real SEO value, unlike the
 // auth-walled/session-personalized /app/** SPA routes below.
 //
-// NavBar/Footer are mounted once in Layout.tsx, so every route here shares identical chrome —
+// NavBar/Footer are mounted once in Layout.tsx, so every route here shares identical chrome,
 // no per-route shell wrapper needed (AppShell was removed once the header stopped being
 // /app/**-specific).
 //
@@ -26,6 +28,8 @@ export const routes: RouteRecord[] = [
       { index: true, element: <Landing /> },
       { path: 'about', element: <About /> },
       { path: 'faq', element: <Faq /> },
+      { path: 'learn', element: <Learn /> },
+      { path: 'learn/:slug', element: <LearnTopic /> },
       { path: 'privacy', element: <PrivacyPolicy /> },
       { path: 'terms', element: <TermsOfService /> },
       // Silent OIDC redirect, no visual UI worth the shared chrome, so NavBar/Footer hide
@@ -44,7 +48,7 @@ export const routes: RouteRecord[] = [
         lazy: async () => ({ Component: (await import('./app/health-centers/HealthCentersPage')).default }),
       },
       // Chart.js is desktop/broadband-only weight (admin console, per the migration plan's
-      // bundle budget) — lazy-loaded so public/mobile users never pay for it. Auth is
+      // bundle budget), lazy-loaded so public/mobile users never pay for it. Auth is
       // enforced inside each *.lazy.tsx entry via RequireAuth (route.lazy can't combine with
       // route.element, so the guard has to live in the lazily-loaded module itself). Dashboard
       // follows the same *.lazy.tsx pattern for consistency, even though its guard is simpler.
@@ -53,6 +57,7 @@ export const routes: RouteRecord[] = [
       { path: 'app/admin/admins', lazy: () => import('./app/admin/AdminAdminsPage.lazy') },
       { path: 'app/admin/questions', lazy: () => import('./app/admin/AdminQuestionsPage.lazy') },
       { path: 'app/admin/health-centers', lazy: () => import('./app/admin/AdminHealthCentersPage.lazy') },
+      { path: 'app/admin/model-ops', lazy: () => import('./app/admin/AdminModelOpsPage.lazy') },
       { path: 'app/admin/audit-log', lazy: () => import('./app/admin/AdminAuditLogPage.lazy') },
       { path: '*', element: <NotFound /> },
     ],

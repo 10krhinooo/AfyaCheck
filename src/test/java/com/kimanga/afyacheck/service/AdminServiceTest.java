@@ -5,14 +5,17 @@ import com.kimanga.afyacheck.DTO.admin.UserDTO;
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import com.kimanga.afyacheck.model.AdminAuditLog;
 import com.kimanga.afyacheck.model.Answer;
+import com.kimanga.afyacheck.model.BlacklistedPlace;
 import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.repository.AdminAuditLogRepository;
 import com.kimanga.afyacheck.repository.AnswerRepository;
+import com.kimanga.afyacheck.repository.BlacklistedPlaceRepository;
 import com.kimanga.afyacheck.repository.HealthCenterRepository;
 import com.kimanga.afyacheck.repository.QuestionRepository;
+import com.kimanga.afyacheck.repository.RiskAssessmentRepository;
 import com.kimanga.afyacheck.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +43,8 @@ class AdminServiceTest {
     private AnswerRepository answerRepository;
     private AdminAuditLogRepository adminAuditLogRepository;
     private HealthCenterRepository healthCenterRepository;
+    private BlacklistedPlaceRepository blacklistedPlaceRepository;
+    private RiskAssessmentRepository riskAssessmentRepository;
     private AdminService adminService;
 
     @BeforeEach
@@ -49,7 +54,9 @@ class AdminServiceTest {
         answerRepository = mock(AnswerRepository.class);
         adminAuditLogRepository = mock(AdminAuditLogRepository.class);
         healthCenterRepository = mock(HealthCenterRepository.class);
-        adminService = new AdminService(userRepository, questionRepository, answerRepository, adminAuditLogRepository, healthCenterRepository);
+        blacklistedPlaceRepository = mock(BlacklistedPlaceRepository.class);
+        riskAssessmentRepository = mock(RiskAssessmentRepository.class);
+        adminService = new AdminService(userRepository, questionRepository, answerRepository, adminAuditLogRepository, healthCenterRepository, blacklistedPlaceRepository, riskAssessmentRepository);
     }
 
     @AfterEach
@@ -385,6 +392,84 @@ class AdminServiceTest {
     }
 
     @Test
+    void getBlacklistedPlacesReturnsRepositoryResult() {
+        BlacklistedPlace place = new BlacklistedPlace();
+        place.setPlaceId("place-1");
+        when(blacklistedPlaceRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(place));
+
+        List<BlacklistedPlace> result = adminService.getBlacklistedPlaces();
+
+        assertThat(result).containsExactly(place);
+    }
+
+    @Test
+    void getBlacklistedPlacesFallsBackOnException() {
+        when(blacklistedPlaceRepository.findAllByOrderByCreatedAtDesc()).thenThrow(new RuntimeException("boom"));
+
+        List<BlacklistedPlace> result = adminService.getBlacklistedPlaces();
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void blacklistPlaceFailsWhenPlaceIdBlank() {
+        ServiceResult<BlacklistedPlace> result = adminService.blacklistPlace("  ", "Some Clinic");
+
+        assertThat(result.isSuccess()).isFalse();
+        verifyNoInteractions(blacklistedPlaceRepository);
+    }
+
+    @Test
+    void blacklistPlaceFailsWhenAlreadyBlacklisted() {
+        when(blacklistedPlaceRepository.existsByPlaceId("place-1")).thenReturn(true);
+
+        ServiceResult<BlacklistedPlace> result = adminService.blacklistPlace("place-1", "Some Clinic");
+
+        assertThat(result.isSuccess()).isFalse();
+        verify(blacklistedPlaceRepository, never()).save(any());
+    }
+
+    @Test
+    void blacklistPlaceSavesNewEntry() {
+        when(blacklistedPlaceRepository.existsByPlaceId("place-1")).thenReturn(false);
+        when(blacklistedPlaceRepository.save(any(BlacklistedPlace.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ServiceResult<BlacklistedPlace> result = adminService.blacklistPlace("place-1", "Some Clinic");
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getData().getPlaceId()).isEqualTo("place-1");
+        assertThat(result.getData().getName()).isEqualTo("Some Clinic");
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
+    }
+
+    @Test
+    void blacklistPlaceFailsOnException() {
+        when(blacklistedPlaceRepository.existsByPlaceId("place-1")).thenThrow(new RuntimeException("boom"));
+
+        ServiceResult<BlacklistedPlace> result = adminService.blacklistPlace("place-1", "Some Clinic");
+
+        assertThat(result.isSuccess()).isFalse();
+    }
+
+    @Test
+    void unblacklistPlaceDeletesEntry() {
+        ServiceResult<Void> result = adminService.unblacklistPlace("place-1");
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(blacklistedPlaceRepository).deleteByPlaceId("place-1");
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
+    }
+
+    @Test
+    void unblacklistPlaceFailsOnException() {
+        doThrow(new RuntimeException("boom")).when(blacklistedPlaceRepository).deleteByPlaceId("place-1");
+
+        ServiceResult<Void> result = adminService.unblacklistPlace("place-1");
+
+        assertThat(result.isSuccess()).isFalse();
+    }
+
+    @Test
     void getAnswerStatisticsComputesAverageWhenQuestionsExist() {
         when(answerRepository.count()).thenReturn(10L);
         when(questionRepository.countByIsActiveTrue()).thenReturn(5L);
@@ -409,5 +494,45 @@ class AdminServiceTest {
         when(answerRepository.count()).thenThrow(new RuntimeException("boom"));
         var stats = adminService.getAnswerStatistics();
         assertThat(stats.get("totalAnswers")).isEqualTo(0);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getModelOpsStatsAggregatesGroupedCounts() {
+        when(riskAssessmentRepository.count()).thenReturn(12L);
+        when(riskAssessmentRepository.countGroupedByRiskLevel())
+                .thenReturn(List.<Object[]>of(new Object[]{"Low", 7L}, new Object[]{"High", 5L}, new Object[]{null, 0L}));
+        when(riskAssessmentRepository.countGroupedByModelVersion())
+                .thenReturn(List.<Object[]>of(new Object[]{"ml-2026-07-17", 10L, 42.36}, new Object[]{null, 2L, null}));
+        when(riskAssessmentRepository.countByDaySince(any(Date.class)))
+                .thenReturn(List.<Object[]>of(new Object[]{java.sql.Date.valueOf("2026-07-19"), 3L}));
+
+        var stats = adminService.getModelOpsStats();
+
+        assertThat(stats.get("totalAssessments")).isEqualTo(12L);
+        var riskLevels = (java.util.Map<String, Long>) stats.get("riskLevelCounts");
+        assertThat(riskLevels).containsEntry("Low", 7L).containsEntry("High", 5L).containsEntry("Unknown", 0L);
+        var versions = (List<java.util.Map<String, Object>>) stats.get("modelVersions");
+        assertThat(versions).hasSize(2);
+        assertThat(versions.get(0).get("modelVersion")).isEqualTo("ml-2026-07-17");
+        assertThat(versions.get(0).get("avgRiskScore")).isEqualTo(42.4);
+        assertThat(versions.get(1).get("modelVersion")).isEqualTo("unknown");
+        assertThat(versions.get(1).get("avgRiskScore")).isNull();
+        var perDay = (List<java.util.Map<String, Object>>) stats.get("assessmentsPerDay");
+        assertThat(perDay).hasSize(1);
+        assertThat(perDay.get(0).get("date")).isEqualTo("2026-07-19");
+        assertThat(perDay.get(0).get("count")).isEqualTo(3L);
+    }
+
+    @Test
+    void getModelOpsStatsFallsBackOnException() {
+        when(riskAssessmentRepository.count()).thenThrow(new RuntimeException("boom"));
+
+        var stats = adminService.getModelOpsStats();
+
+        assertThat(stats.get("totalAssessments")).isEqualTo(0L);
+        assertThat((java.util.Map<?, ?>) stats.get("riskLevelCounts")).isEmpty();
+        assertThat((List<?>) stats.get("modelVersions")).isEmpty();
+        assertThat((List<?>) stats.get("assessmentsPerDay")).isEmpty();
     }
 }

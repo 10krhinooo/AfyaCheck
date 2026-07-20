@@ -1,6 +1,8 @@
 package com.kimanga.afyacheck.service;
 
+import com.kimanga.afyacheck.model.BlacklistedPlace;
 import com.kimanga.afyacheck.model.HealthCenter;
+import com.kimanga.afyacheck.repository.BlacklistedPlaceRepository;
 import com.kimanga.afyacheck.repository.HealthCenterRepository;
 import org.springframework.stereotype.Service;
 
@@ -13,9 +15,13 @@ public class HealthCenterService {
     private static final double EARTH_RADIUS_KM = 6371;
 
     private final HealthCenterRepository healthCenterRepository;
+    private final BlacklistedPlaceRepository blacklistedPlaceRepository;
 
-    public HealthCenterService(HealthCenterRepository healthCenterRepository) {
+    public HealthCenterService(
+            HealthCenterRepository healthCenterRepository,
+            BlacklistedPlaceRepository blacklistedPlaceRepository) {
         this.healthCenterRepository = healthCenterRepository;
+        this.blacklistedPlaceRepository = blacklistedPlaceRepository;
     }
 
     /**
@@ -27,6 +33,18 @@ public class HealthCenterService {
         return healthCenterRepository.findByIsActiveTrue().stream()
                 .filter(c -> distanceKm(lat, lng, c.getLatitude(), c.getLongitude()) <= radiusKm)
                 .sorted(Comparator.comparingDouble(c -> distanceKm(lat, lng, c.getLatitude(), c.getLongitude())))
+                .toList();
+    }
+
+    /**
+     * Google Places IDs an admin has hidden from the live-search supplement (see
+     * useNearbyHealthCenters.ts), so the frontend can filter them out before merging live
+     * results with curated ones. Public read (no admin auth) since it's needed by the
+     * anonymous health-centers page, same access model as findNearby above.
+     */
+    public List<String> blacklistedPlaceIds() {
+        return blacklistedPlaceRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(BlacklistedPlace::getPlaceId)
                 .toList();
     }
 

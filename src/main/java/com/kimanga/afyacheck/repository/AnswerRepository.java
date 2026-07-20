@@ -31,6 +31,11 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
     // Delete all answers for a session
     void deleteBySession(Session session);
 
+    // Bulk retention purge (DataRetentionService) — must run before the Session bulk delete.
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM Answer a WHERE a.session IN (SELECT s FROM Session s WHERE s.createdAt < :cutoff)")
+    int deleteBySessionCreatedAtBefore(@Param("cutoff") java.util.Date cutoff);
+
     // Find answers by question key pattern
     @Query("SELECT a FROM Answer a WHERE a.questionKey LIKE %:pattern%")
     List<Answer> findByQuestionKeyContaining(@Param("pattern") String pattern);

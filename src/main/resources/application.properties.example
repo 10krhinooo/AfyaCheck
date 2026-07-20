@@ -5,7 +5,7 @@
 # ${ENV_VAR} placeholders, so setting the environment variable is enough;
 # no code or property file changes are needed.
 #
-# DB_PASSWORD, MAIL_PASSWORD, REMEMBER_ME_KEY, and KEYCLOAK_BACKEND_CLIENT_SECRET have no
+# DB_PASSWORD, MAIL_PASSWORD, and KEYCLOAK_BACKEND_CLIENT_SECRET have no
 # default value in application.properties: the app will fail to start if they are unset,
 # rather than silently running with a blank credential.
 #
@@ -24,9 +24,6 @@ DB_PASSWORD=change-me
 # --- Mail (SMTP) ---
 MAIL_USERNAME=noreply.example@gmail.com
 MAIL_PASSWORD=change-me
-
-# --- Remember-me cookie signing key (required, no default) ---
-REMEMBER_ME_KEY=change-me-to-a-long-random-string
 
 # --- Keycloak backend service account (required, no default) ---
 # KeycloakAdminService uses this to call Keycloak's Admin REST API and assign/remove realm

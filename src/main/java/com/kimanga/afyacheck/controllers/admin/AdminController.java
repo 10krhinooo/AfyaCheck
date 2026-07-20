@@ -3,9 +3,12 @@ package com.kimanga.afyacheck.controllers.admin;
 import com.kimanga.afyacheck.DTO.admin.AuditLogDTO;
 import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.DTO.admin.UserDTO;
+import com.kimanga.afyacheck.model.BlacklistedPlace;
 import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.service.AdminService;
+import com.kimanga.afyacheck.service.DecisionTreeClient;
+import com.kimanga.afyacheck.service.MLService;
 import com.kimanga.afyacheck.service.UserService;
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,8 @@ public class AdminController {
 
     private final AdminService adminService;
     private final UserService userService;
+    private final MLService mlService;
+    private final DecisionTreeClient decisionTreeClient;
 
     public record DashboardResponse(
             long totalUsers,
@@ -69,6 +74,25 @@ public class AdminController {
 
     private long orZero(Long value) {
         return value != null ? value : 0;
+    }
+
+    /**
+     * Model-ops panel: assessment volume/severity aggregated by risk level, model version,
+     * and day, plus live health of the two Python services. The health probes are real HTTP
+     * calls, acceptable on an admin-only, manually-loaded page.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/model-ops")
+    public ResponseEntity<?> modelOps() {
+        try {
+            Map<String, Object> body = new java.util.LinkedHashMap<>(adminService.getModelOpsStats());
+            body.put("mlServiceHealthy", mlService.isServiceHealthy());
+            body.put("decisionTreeServiceHealthy", decisionTreeClient.isServiceHealthy());
+            return ResponseEntity.ok(body);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Unable to load model ops data"));
+        }
     }
 
     public record QuestionsResponse(
@@ -185,6 +209,53 @@ public class AdminController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error updating health center"));
+        }
+    }
+
+    public record BlacklistedPlacesResponse(List<BlacklistedPlace> blacklistedPlaces) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/health-centers/blacklist")
+    public ResponseEntity<?> blacklistedPlaces() {
+        try {
+            return ResponseEntity.ok(new BlacklistedPlacesResponse(adminService.getBlacklistedPlaces()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Unable to load hidden health centers"));
+        }
+    }
+
+    public record BlacklistPlaceRequest(String placeId, String name) {}
+
+    // Hides a live Google Places result from the health-centers page's search supplement
+    // (curated centers use health-centers/delete instead, see above).
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/health-centers/blacklist/add")
+    public ResponseEntity<?> blacklistPlace(@RequestBody BlacklistPlaceRequest request) {
+        try {
+            ServiceResult<BlacklistedPlace> result = adminService.blacklistPlace(request.placeId(), request.name());
+            return result.isSuccess()
+                    ? ResponseEntity.ok(result.getData())
+                    : ResponseEntity.badRequest().body(Map.of("error", result.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error hiding health center"));
+        }
+    }
+
+    public record UnblacklistPlaceRequest(String placeId) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/health-centers/blacklist/remove")
+    public ResponseEntity<?> unblacklistPlace(@RequestBody UnblacklistPlaceRequest request) {
+        try {
+            ServiceResult<Void> result = adminService.unblacklistPlace(request.placeId());
+            return result.isSuccess()
+                    ? ResponseEntity.ok(Map.of("message", result.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("error", result.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error unhiding health center"));
         }
     }
 

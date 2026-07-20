@@ -5,6 +5,7 @@ const links = [
   { to: '/app/admin/admins', label: 'Admins' },
   { to: '/app/admin/questions', label: 'Questions' },
   { to: '/app/admin/health-centers', label: 'Health centers' },
+  { to: '/app/admin/model-ops', label: 'Model ops' },
   { to: '/app/admin/audit-log', label: 'Audit log' },
 ]
 

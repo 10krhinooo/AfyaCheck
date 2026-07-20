@@ -37,7 +37,14 @@ public class QuestionController {
 
             logger.info("Starting questionnaire for session: {} (created: {})", sessionId, createdSessionId);
 
+            // Resume support: a reload keeps the same HttpSession, so pick up any answers
+            // already saved instead of restarting the questionnaire from question one.
             Map<String, String> initialAnswers = new HashMap<>();
+            Map<String, String> savedAnswers = sessionService.getCurrentAnswers(createdSessionId);
+            if (savedAnswers != null) {
+                initialAnswers.putAll(savedAnswers);
+            }
+            boolean resumed = !initialAnswers.isEmpty();
             initialAnswers.put("_sessionId", createdSessionId);
 
             Map<String, Object> firstQuestion = decisionService.getNextQuestion(initialAnswers);
@@ -49,10 +56,17 @@ public class QuestionController {
                         .body(Map.of("error", firstQuestion.get("error"), "sessionId", createdSessionId));
             }
 
+            // A resumed session may already have every question answered — finish it the
+            // same way /next would instead of handing back a questionless payload.
+            if (Boolean.TRUE.equals(firstQuestion.get("end"))) {
+                return ResponseEntity.ok(buildEndOfSurveyResponse(createdSessionId, initialAnswers, firstQuestion));
+            }
+
             Map<String, Object> body = new HashMap<>();
             body.put("sessionId", createdSessionId);
             body.put("question", firstQuestion);
-            body.put("canGoBack", false);
+            body.put("canGoBack", resumed);
+            body.put("resumed", resumed);
             return ResponseEntity.ok(body);
         } catch (Exception e) {
             logger.error("Error starting questionnaire", e);

@@ -7,7 +7,7 @@ import { useAuth } from './AuthContext'
 import { login } from './keycloak'
 
 // Wraps a route that requires a signed-in user (dashboard, admin). Unauthenticated visitors
-// are sent straight into Keycloak's hosted login rather than shown a 401/broken page — the
+// are sent straight into Keycloak's hosted login rather than shown a 401/broken page, the
 // public flows (questionnaire, results, health-centers, landing) never use this.
 export function RequireAuth({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) {
   const { isLoading, isAuthenticated, isAdmin } = useAuth()

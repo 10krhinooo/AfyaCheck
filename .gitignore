@@ -72,3 +72,10 @@ node_modules/
 ### Python (ml-service, python-service) ###
 __pycache__/
 *.pyc
+
+# Built React SPA copied into the jar by Gradle's buildFrontend/processResources wiring —
+# never commit it; the build regenerates it from frontend/ every time.
+src/main/resources/static/
+
+# Python service training logs
+python-service/train_log*.txt

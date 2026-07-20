@@ -5,6 +5,7 @@ import { Card } from '../../components/Card'
 import { ProgressBar } from '../../components/ProgressBar'
 import { Skeleton } from '../../components/Skeleton'
 import { StatusMessage } from '../../components/StatusMessage'
+import { useTranslation } from '../../lib/i18n'
 import { storeQuestionnaireResult } from '../results/resultStorage'
 import { QuestionForm } from './QuestionForm'
 import { useQuestionnaire } from './useQuestionnaire'
@@ -12,6 +13,7 @@ import { useQuestionnaire } from './useQuestionnaire'
 export default function QuestionnairePage() {
   const { question, canGoBack, loading, submitting, error, result, submitAnswer, goBack, retry } =
     useQuestionnaire()
+  const { t } = useTranslation()
   const headingRef = useRef<HTMLHeadingElement>(null)
   const navigate = useNavigate()
 
@@ -32,7 +34,7 @@ export default function QuestionnairePage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-xl px-6 py-12" aria-busy="true">
-        <span className="sr-only">Loading your assessment…</span>
+        <span className="sr-only">{t('questionnaire.loading')}</span>
         <Skeleton className="h-2 w-full rounded-full" />
         <Skeleton className="mt-8 h-64 w-full p-8" />
       </main>
@@ -47,11 +49,11 @@ export default function QuestionnairePage() {
     return (
       <main className="mx-auto max-w-xl px-6 py-16 text-center">
         <div className="inline-flex text-left">
-          <StatusMessage tone="error">{error}</StatusMessage>
+          <StatusMessage tone="error">{t(error)}</StatusMessage>
         </div>
         <div>
           <Button variant="secondary" className="mt-6" onClick={retry}>
-            Try again
+            {t('questionnaire.tryAgain')}
           </Button>
         </div>
       </main>
@@ -63,13 +65,16 @@ export default function QuestionnairePage() {
   return (
     <main className="mx-auto max-w-xl px-6 py-12">
       <div aria-live="polite" className="sr-only">
-        Question {question.questionIndex} of {question.totalQuestions}: {question.text}
+        {t('questionnaire.questionCounter')
+          .replace('{index}', String(question.questionIndex))
+          .replace('{total}', String(question.totalQuestions))}
+        : {question.text}
       </div>
 
       <ProgressBar
         value={question.questionIndex}
         max={question.totalQuestions}
-        label={question.sectionTitle ?? 'Assessment progress'}
+        label={question.sectionTitle ?? t('questionnaire.progressLabel')}
       />
 
       <Card key={question.key} className="mt-8 animate-fade-in-up p-8 motion-reduce:animate-none">
@@ -84,7 +89,7 @@ export default function QuestionnairePage() {
 
         {error && (
           <div className="mt-4">
-            <StatusMessage tone="error">{error}</StatusMessage>
+            <StatusMessage tone="error">{t(error)}</StatusMessage>
           </div>
         )}
 
@@ -97,7 +102,7 @@ export default function QuestionnairePage() {
 
       {canGoBack && (
         <Button variant="ghost" className="mt-4" onClick={goBack} disabled={submitting}>
-          &larr; Back
+          &larr; {t('questionnaire.back')}
         </Button>
       )}
     </main>

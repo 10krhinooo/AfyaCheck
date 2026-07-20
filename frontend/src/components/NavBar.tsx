@@ -34,7 +34,7 @@ function NavItem({
 
 // Single shared masthead for every route (Landing included), mounted once in Layout.tsx.
 // Logo is always the grid's first (auto-width) column so it stays flush-left regardless of
-// how many nav links render either side of it — not just visually left-leaning by luck of
+// how many nav links render either side of it, not just visually left-leaning by luck of
 // justify-between with a variable number of children.
 export function NavBar() {
   const { pathname } = useLocation()
@@ -43,19 +43,20 @@ export function NavBar() {
   const [open, setOpen] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
-  // Silent OIDC redirect screen — no chrome worth showing (see routes.tsx).
+  // Silent OIDC redirect screen: no chrome worth showing (see routes.tsx).
   if (pathname === '/app/callback') return null
 
   const baseLinks = [
     { to: '/', label: t('nav.home'), end: true },
     { to: '/app/questionnaire', label: t('nav.assessment') },
     { to: '/app/health-centers', label: t('nav.healthCenters') },
+    { to: '/learn', label: t('nav.learn') },
     { to: '/about', label: t('nav.about') },
     { to: '/faq', label: t('nav.faq') },
   ]
 
   // The admin console (AdminNav) has its own internal navigation (Dashboard/Admins/Questions/
-  // Audit log) — the public marketing links here are just clutter while managing the system,
+  // Audit log): the public marketing links here are just clutter while managing the system,
   // so this masthead shrinks to just sign-out + the logo (rendered separately below).
   const isAdminRoute = pathname.startsWith('/app/admin')
   const links = isAdminRoute

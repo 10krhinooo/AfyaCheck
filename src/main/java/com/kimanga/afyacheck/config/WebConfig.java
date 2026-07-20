@@ -30,5 +30,14 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addViewController("/faq").setViewName("forward:/faq.html");
         registry.addViewController("/privacy").setViewName("forward:/privacy.html");
         registry.addViewController("/terms").setViewName("forward:/terms.html");
+
+        // Education pages: /learn prerenders to learn.html and each topic to
+        // learn/<slug>.html (flat dirStyle). View controllers can't substitute path
+        // variables into the view name, so each prerendered topic gets an explicit mapping —
+        // keep in sync with vite.config.ts ssgOptions.includedRoutes.
+        registry.addViewController("/learn").setViewName("forward:/learn.html");
+        registry.addViewController("/learn/sti-basics").setViewName("forward:/learn/sti-basics.html");
+        registry.addViewController("/learn/hiv-prevention").setViewName("forward:/learn/hiv-prevention.html");
+        registry.addViewController("/learn/testing").setViewName("forward:/learn/testing.html");
     }
 }

@@ -5,7 +5,7 @@
 @import '@fontsource-variable/fraunces';
 
 @theme {
-  /* AfyaCheck identity: a calm, private, trustworthy space — not a clinical
+  /* AfyaCheck identity: a calm, private, trustworthy space, not a clinical
      scan. Deep teal for confidence + focus, warm paper neutrals instead of
      cold grays, a single amber/coral accent reserved for risk states. */
   --font-display: 'Fraunces Variable', ui-serif, Georgia, serif;

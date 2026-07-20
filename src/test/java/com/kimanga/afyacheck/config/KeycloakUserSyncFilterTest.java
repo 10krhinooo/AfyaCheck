@@ -40,7 +40,7 @@ class KeycloakUserSyncFilterTest {
                 Instant.now(),
                 Instant.now().plusSeconds(60),
                 Map.of("alg", "none"),
-                Map.of("sub", sub, "email", email, "name", name));
+                Map.of("sub", sub, "email", email, "name", name, "email_verified", true));
     }
 
     @Test
@@ -49,6 +49,7 @@ class KeycloakUserSyncFilterTest {
         JwtAuthenticationToken auth = new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_USER")));
         SecurityContextHolder.getContext().setAuthentication(auth);
         when(userRepository.findByKeycloakId("kc-123")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("amina@example.com")).thenReturn(Optional.empty());
 
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpServletResponse response = mock(HttpServletResponse.class);
@@ -65,6 +66,34 @@ class KeycloakUserSyncFilterTest {
         assertThat(saved.getProvider()).isEqualTo(AuthProvider.KEYCLOAK);
         assertThat(saved.getRole()).isEqualTo(UserRole.USER);
         verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void relinksExistingRowByEmailWhenKeycloakIdChanged() throws Exception {
+        // Simulates a Keycloak dev-realm re-import minting a new subject UUID for an email
+        // that already has a local row under the old UUID (see the fix's comment in
+        // KeycloakUserSyncFilter) — must re-link, not attempt a second INSERT that would
+        // violate the email unique constraint.
+        Jwt jwt = jwt("kc-new-789", "amina@example.com", "Amina Mwangi");
+        JwtAuthenticationToken auth = new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        User existing = new User();
+        existing.setKeycloakId("kc-old-123");
+        existing.setEmail("amina@example.com");
+        existing.setRole(UserRole.USER);
+        when(userRepository.findByKeycloakId("kc-new-789")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("amina@example.com")).thenReturn(Optional.of(existing));
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        FilterChain chain = mock(FilterChain.class);
+
+        filter.doFilter(request, response, chain);
+
+        verify(userRepository).save(existing);
+        assertThat(existing.getKeycloakId()).isEqualTo("kc-new-789");
+        verify(userRepository, never()).save(argThat(u -> u != existing));
     }
 
     @Test

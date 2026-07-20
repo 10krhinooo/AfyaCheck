@@ -5,7 +5,7 @@ seriously and appreciate the effort of anyone who helps us find and fix vulnerab
 
 ## Supported Versions
 
-AfyaCheck is developed on a single `main` branch with continuous deployment — there are no
+AfyaCheck is developed on a single `main` branch with continuous deployment: there are no
 maintained release branches. Security fixes are applied to `main` and deployed as soon as they
 are merged. Only the latest deployed version is supported.
 
@@ -43,7 +43,7 @@ In scope:
 
 Out of scope:
 - Third-party services we depend on but don't control (Google Maps API, Gmail SMTP, Keycloak
-  itself) — please report those issues to the respective vendor
+  itself): please report those issues to the respective vendor
 - Denial-of-service reports based purely on volume (rate-limiting gaps are welcome as a report,
   but please don't run actual load/DoS tests against shared infrastructure)
 - Social engineering, physical security, or attacks requiring pre-existing admin access
@@ -66,11 +66,11 @@ date once a fix is available.
 If a reported vulnerability turns out to be actively exploited or to have resulted in a data
 breach, we follow this internal process:
 
-1. **Triage & containment** — confirm the report, assess scope, rotate any credentials that may
+1. **Triage & containment**: confirm the report, assess scope, rotate any credentials that may
    be exposed, and contain the affected system.
-2. **Eradication** — deploy the fix, verify it closes the reported vector.
-3. **Notification** — where a breach involves personal data, affected users (and, where legally
+2. **Eradication**: deploy the fix, verify it closes the reported vector.
+3. **Notification**: where a breach involves personal data, affected users (and, where legally
    required, relevant authorities) are notified **within 72 hours** of confirming the breach,
    consistent with GDPR Art. 33 and equivalent Kenyan Data Protection Act obligations.
-4. **Post-incident review** — document root cause and remediation, and track any follow-up
+4. **Post-incident review**: document root cause and remediation, and track any follow-up
    hardening work.

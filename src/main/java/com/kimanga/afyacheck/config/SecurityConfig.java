@@ -1,5 +1,9 @@
 package com.kimanga.afyacheck.config;
 
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -7,14 +11,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -36,16 +43,6 @@ import java.util.stream.Stream;
 public class SecurityConfig {
 
     /**
-     * Still needed by UserService's register()/resetPassword() methods, which remain in the
-     * codebase (called only internally/from tests now that AuthController and its Thymeleaf
-     * forms are gone — Keycloak's hosted screens own registration and password reset).
-     */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    /**
      * The SPA's oidc-client-ts talks directly to this origin (OIDC discovery + token endpoint)
      * from the browser, so it must be allowed in the CSP's connect-src below or every
      * signinRedirect()/silent-renew call gets blocked client-side before it even leaves the
@@ -60,7 +57,22 @@ public class SecurityConfig {
             KeycloakUserSyncFilter keycloakUserSyncFilter,
             AuditingAccessDeniedHandler auditingAccessDeniedHandler) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                // Double-submit cookie CSRF (Spring's documented pattern for a same-origin SPA):
+                // the token rides in a JS-readable cookie, api-client.ts echoes it back as the
+                // X-XSRF-TOKEN header on every mutating request. Needed because the anonymous
+                // questionnaire flow's /api/questionnaire/start relies on the ambient JSESSIONID
+                // cookie alone (see KeycloakUserSyncFilter's JWT-bearer paths, which aren't
+                // cookie-authenticated and so aren't CSRF-exploitable in the first place, but the
+                // filter applies uniformly since that's simpler to reason about than a per-route
+                // carve-out).
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                )
+                // CookieCsrfTokenRepository only writes the cookie once something actually reads
+                // the deferred CsrfToken; without forcing that read here, a browser's first
+                // (GET) page load never receives the cookie, so the first POST/DELETE 403s.
+                .addFilterAfter(new CsrfCookieFilter(), BearerTokenAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions.accessDeniedHandler(auditingAccessDeniedHandler))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
@@ -69,10 +81,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/",
-                                "/css/**",
-                                "/js/**",
-                                "/images/**",
-                                "/webjars/**",
                                 "/app/**",
                                 "/assets/**",
                                 "/favicon.svg",
@@ -86,6 +94,15 @@ public class SecurityConfig {
                                 // `.json()` call on it throws "Unexpected end of JSON input".
                                 "/static-loader-data-manifest-*.json",
                                 "/static-loader-data/**",
+                                // PWA service worker + manifest (vite-plugin-pwa output). The
+                                // browser fetches these with no auth header; without permitAll
+                                // the SW registration 401s and the PWA install/precache never
+                                // happens for anonymous users.
+                                "/sw.js",
+                                "/registerSW.js",
+                                "/workbox-*.js",
+                                "/manifest.webmanifest",
+                                "/pwa-*.png",
                                 // /app/** forwards here (see WebConfig) — needed alongside
                                 // "/app/**" for the same reason "/index.html" is listed
                                 // separately: Spring Security re-evaluates on the internal
@@ -104,12 +121,20 @@ public class SecurityConfig {
                                 "/privacy.html",
                                 "/terms",
                                 "/terms.html",
+                                // Education pages: hub (learn.html) + topic files under /learn/.
+                                "/learn",
+                                "/learn.html",
+                                "/learn/**",
                                 // Anonymous risk-screening is a deliberate product requirement (this is a
                                 // public health-screening tool) — the questionnaire, its results, the
                                 // health-center finder, and the Maps key must not require login.
                                 "/api/questionnaire/**",
                                 "/api/questions/**",
                                 "/api/results/**",
+                                "/api/health-centers/**",
+                                // Opt-in retest reminder: same anonymous access model as
+                                // /api/results/notify (and the same strict rate limit).
+                                "/api/reminders",
                                 "/api/config/**"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -164,6 +189,23 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    /**
+     * Forces the deferred {@link CsrfToken} to render into its cookie on every request (see the
+     * comment above where this is registered) -- package-private and static so it can be unit
+     * tested directly instead of only ever running inside a full Spring Security filter chain.
+     */
+    static class CsrfCookieFilter extends OncePerRequestFilter {
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                FilterChain filterChain) throws ServletException, IOException {
+            CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+            if (csrfToken != null) {
+                csrfToken.getToken();
+            }
+            filterChain.doFilter(request, response);
+        }
     }
 
     /**

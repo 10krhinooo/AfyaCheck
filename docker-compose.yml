@@ -1,14 +1,23 @@
-# Local dev Keycloak instance for the AfyaCheck React migration (Phase 7). Not used in
-# production — a real deployment runs Keycloak against Postgres with proper secrets, not
-# `start-dev`'s embedded/ephemeral storage.
+# Local dev stack. Two ways to use it:
 #
-# Usage:
 #   docker compose up -d
-#   Keycloak admin console: http://localhost:8180  (admin / admin)
-#   Realm "afyacheck" and client "afyacheck-spa" are imported automatically from
-#   keycloak/realm-export.json. Frontend dev server (vite) already proxies /api/** to
-#   :8080 — the SPA talks to Keycloak directly on :8180 (see frontend/src/lib/auth/keycloak.ts).
-#   Seed admin login (app, not Keycloak console): admin@afyacheck.com / $SEED_ADMIN_PASSWORD
+#     Starts only Keycloak (the original workflow): run Postgres yourself, backend via
+#     `./gradlew bootRun`, Python services auto-started by the backend.
+#
+#   docker compose --profile full up -d --build
+#     Prod-like full stack: Postgres, Keycloak, both Python services, and the backend jar
+#     (SPA bundled, see Dockerfile). The backend runs with host networking so the
+#     browser-visible Keycloak issuer (http://localhost:8180) validates unchanged, and it
+#     reaches the other services through their published localhost ports.
+#     App: http://localhost:8080
+#
+# Keycloak admin console: http://localhost:8180  (admin / admin)
+# Realm "afyacheck" and client "afyacheck-spa" are imported automatically from
+# keycloak/realm-export.json. Seed admin login (app, not Keycloak console):
+# admin@afyacheck.com / $SEED_ADMIN_PASSWORD
+#
+# Not for production as-is — Keycloak runs `start-dev` with ephemeral storage and default
+# admin credentials; a real deployment needs proper secrets and persistent Keycloak storage.
 services:
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
@@ -25,3 +34,70 @@ services:
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
       - ./keycloak/themes/afyacheck:/opt/keycloak/themes/afyacheck:ro
+
+  # --- profile "full" below: prod-like all-in-one stack ---
+
+  postgres:
+    profiles: ["full"]
+    image: postgres:16
+    environment:
+      POSTGRES_DB: AfyaCheck
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    # 5434 to avoid clashing with a locally-installed Postgres (5432/5433).
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ml-service:
+    profiles: ["full"]
+    build: ./ml-service
+    ports:
+      - "8000:8000"
+
+  decision-service:
+    profiles: ["full"]
+    build: ./python-service
+    ports:
+      - "8001:8001"
+
+  backend:
+    profiles: ["full"]
+    build: .
+    # Host networking keeps every URL identical to the non-Docker workflow (Keycloak issuer
+    # localhost:8180, Python services localhost:8000/8001, Postgres localhost:5434), so the
+    # JWT "iss" claim the SPA obtains in the browser validates inside the container too.
+    network_mode: host
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      ml-service:
+        condition: service_started
+      decision-service:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:postgresql://localhost:5434/AfyaCheck
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${DB_PASSWORD}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      KEYCLOAK_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+      APP_BASE_URL: http://localhost:8080
+      # The Python services run as their own containers here — the backend must not try to
+      # spawn/monitor local processes for them.
+      ML_SERVICE_AUTO_START: "false"
+      DECISION_TREE_SERVICE_AUTO_START: "false"
+      ML_SERVICE_URL: http://localhost:8000
+      DECISION_TREE_SERVICE_URL: http://localhost:8001
+
+volumes:
+  pgdata:

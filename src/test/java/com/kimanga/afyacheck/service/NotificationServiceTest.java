@@ -39,4 +39,15 @@ class NotificationServiceTest {
                 eq("email/risk-result.html"),
                 any(Context.class));
     }
+
+    @Test
+    void sendRetestReminderEmailUsesReminderTemplate() {
+        notificationService.sendRetestReminderEmail("user@example.com");
+
+        verify(emailService).sendHtmlMail(
+                eq("user@example.com"),
+                eq("A gentle reminder from AfyaCheck"),
+                eq("email/retest-reminder.html"),
+                any(Context.class));
+    }
 }

@@ -2,20 +2,22 @@
 
 AfyaCheck is an STI/HIV risk assessment system. Users answer a guided questionnaire, get a machine learning based risk assessment, and can find nearby health centers for follow up care. An admin dashboard lets staff manage users, review questions, and monitor activity.
 
-A React SPA is being incrementally strangler-fig migrated in to replace the legacy Thymeleaf UI, see Architecture below.
+The UI is a React SPA served by the backend itself: `./gradlew build` bundles the built frontend into the jar, so the backend jar is the single deployable artifact (the old server-rendered Thymeleaf UI is fully retired; Thymeleaf now renders only transactional emails).
 
 ## Features
 
 - Authentication via Keycloak (Authorization Code + PKCE from the React SPA), including a themed hosted login/registration/password-reset flow and branded transactional emails (verification, password reset, etc.)
-- Adaptive questionnaire that sequences follow up questions using a decision tree model, fully anonymous, with no link between a questionnaire session and an authenticated user
-- Risk assessment powered by a machine learning model, with results tied to the user's session and tagged with the model version that produced them for auditability
-- Self-service data export and deletion for a completed assessment (keyed by the session's own ID, no login required) and an opt-in "email me these results" option
-- Health center finder backed by the Google Maps API, preferring admin-curated centers (name, hours, STI-testing availability) when any are nearby and falling back to a live Places search otherwise
-- Admin dashboard for managing users, questions, health centers, and viewing usage statistics
+- Adaptive questionnaire that sequences follow-up questions using a decision tree model trained on real KENPHIA 2018 respondent data, fully anonymous, with no link between a questionnaire session and an authenticated user. Answers are saved as you go, so a session can be resumed after a refresh or interruption
+- Risk assessment powered by a machine learning model, with results tied to the user's session and tagged with the model version that produced them for auditability. Results include the session's assessment history, not just the latest one
+- Self-service data export and deletion for a completed assessment (keyed by the session's own ID, no login required), an opt-in "email me these results" option, and an opt-in retest reminder email (the email address and send date are stored only until the one reminder goes out, then deleted)
+- Health center finder backed by the Google Maps API, preferring admin-curated centers (name, hours, services, STI-testing availability) when any are nearby, falling back to a live Places search, or a county picker when location access is denied. Results can be filtered to STI-testing centers only
+- Admin dashboard for managing users, questions, health centers, and viewing usage statistics, plus a model-ops panel showing assessment volume by risk level, by model version, and per day, alongside live health of both Python services
 - Role management: admins can promote or demote any user directly from the admin console; this writes the role to Keycloak itself (the actual source of truth for authorization), not just a local flag
 - Admin audit log: every role change, enable/disable action, question edit, health-center edit, and denied admin-access attempt is recorded with actor, target, and timestamp
-- Swahili/English language switcher in the nav bar (nav labels so far; questionnaire and results copy are still English-only)
+- Swahili/English language switcher in the nav bar, covering the nav, questionnaire, and results flow; question content is translated server-side based on the request's language
+- Prerendered STI/HIV education pages (`/learn`) covering STI basics, HIV prevention, and testing, alongside the existing marketing/legal pages
 - Installable as a PWA. The app shell is precached for fast reloads and resilience to brief connectivity drops (not full offline questionnaire completion, since answers still have to reach the backend)
+- Per-IP rate limiting on the public API, with a stricter limit on the email-sending endpoints, and a scheduled purge of data older than the configured retention window
 - Admin-only API docs at `/swagger-ui/index.html` (springdoc), gated the same as the rest of `/api/admin/**`
 
 ## Architecture
@@ -27,7 +29,7 @@ The system is made up of four services:
 | Backend | `src/` | Spring Boot 3 (Java 21), PostgreSQL, Flyway | Questionnaire flow, sessions, admin dashboard, orchestrates the two ML services, validates Keycloak-issued JWTs |
 | Decision tree service | `python-service/` | FastAPI, scikit-learn | Sequences the next question based on prior answers |
 | ML risk prediction service | `ml-service/` | FastAPI, scikit-learn/XGBoost | Produces the final HIV/STI risk prediction from questionnaire answers |
-| Frontend | `frontend/` | React + Vite (`vite-react-ssg`), TypeScript | SPA under `/app/**`, replacing the legacy Thymeleaf templates route by route |
+| Frontend | `frontend/` | React + Vite (`vite-react-ssg`), TypeScript | SPA under `/app/**` plus prerendered marketing/legal pages; bundled into the backend jar at build time |
 
 Identity is owned by Keycloak. See `keycloak/realm-export.json` for the realm/client config and `keycloak/themes/afyacheck/` for the custom login theme (extends Keycloak's built-in `keycloak.v2` theme with AfyaCheck's palette and type) and email theme (branded HTML wrapper shared by every Keycloak-sent email: verify-email, password-reset, execute-actions, etc.).
 
@@ -71,23 +73,22 @@ environment at startup via the `spring-dotenv` dependency, no manual export step
 
 Required variables:
 
-- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` — PostgreSQL connection
-- `MAIL_USERNAME`, `MAIL_PASSWORD` — SMTP credentials used for outbound email (both the backend's own mail sender and Keycloak's `smtpServer` config in `realm-export.json` read these — see docker-compose.yml, which passes them through to the Keycloak container)
-- `REMEMBER_ME_KEY` — a long random string used to sign remember me cookies
-- `KEYCLOAK_BACKEND_CLIENT_SECRET` — the `afyacheck-backend` service-account client secret (`KeycloakAdminService` uses it to call Keycloak's Admin REST API when an admin changes a user's role); must match the same value docker-compose.yml passes into the Keycloak container, so the client Keycloak imports and the credential the backend authenticates with agree. Generate one with `openssl rand -hex 32`.
-- `SEED_ADMIN_PASSWORD` — password for the seed admin user (`admin@afyacheck.com`) that `docker compose up` imports into Keycloak from `realm-export.json`; not read by the Spring app itself, only by docker-compose.yml
-- `GOOGLE_MAPS_API_KEY` — used by the health center finder
-- `APP_BASE_URL` — the base URL used to build links in emails
+- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`: PostgreSQL connection
+- `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials used for outbound email (both the backend's own mail sender and Keycloak's `smtpServer` config in `realm-export.json` read these; see docker-compose.yml, which passes them through to the Keycloak container)
+- `KEYCLOAK_BACKEND_CLIENT_SECRET`: the `afyacheck-backend` service-account client secret (`KeycloakAdminService` uses it to call Keycloak's Admin REST API when an admin changes a user's role); must match the same value docker-compose.yml passes into the Keycloak container, so the client Keycloak imports and the credential the backend authenticates with agree. Generate one with `openssl rand -hex 32`.
+- `SEED_ADMIN_PASSWORD`: password for the seed admin user (`admin@afyacheck.com`) that `docker compose up` imports into Keycloak from `realm-export.json`; not read by the Spring app itself, only by docker-compose.yml
+- `GOOGLE_MAPS_API_KEY`: used by the health center finder
+- `APP_BASE_URL`: the base URL used to build links in emails
 
-`DB_PASSWORD`, `MAIL_PASSWORD`, `REMEMBER_ME_KEY`, and `KEYCLOAK_BACKEND_CLIENT_SECRET` have no default: the app fails to start if they are unset rather than running with a blank credential. `SEED_ADMIN_PASSWORD` has no default either, but it's docker-compose.yml (not the Spring app) that substitutes it into the imported realm.
+`DB_PASSWORD`, `MAIL_PASSWORD`, and `KEYCLOAK_BACKEND_CLIENT_SECRET` have no default: the app fails to start if they are unset rather than running with a blank credential. `SEED_ADMIN_PASSWORD` has no default either, but it's docker-compose.yml (not the Spring app) that substitutes it into the imported realm.
 
 Optional:
 
 - `PYTHON_EXECUTABLE_PATH`: defaults to a Windows path (`C:/Python314/python.exe`); override to your platform's interpreter (e.g. `/usr/bin/python3` on Linux/macOS) if `PythonServiceManager` fails to start the two Python services below.
 
-The two Python services are not auto-started by the backend (`ml.service.auto.start` /
-`decision.tree.service.auto.start` both default `false`), start them manually before hitting
-endpoints that depend on them.
+The two Python services are auto-started by the backend (`ml.service.auto.start` /
+`decision.tree.service.auto.start` are `true`; `PythonServiceManager` spawns and monitors
+them). Set them to `false` if you prefer to run the services manually as shown below.
 
 ### 4. Python services
 
@@ -112,7 +113,10 @@ The backend expects both services to be reachable; see `PythonConfig` for the co
 ./gradlew bootRun
 ```
 
-The app starts on `http://localhost:8080`.
+The app starts on `http://localhost:8080` and serves the bundled React SPA. Building the jar
+(`./gradlew build`) runs `npm ci && npm run build` in `frontend/` and copies `frontend/dist`
+into the jar's `static/` resources; pass `-PskipFrontend` for backend-only iteration on a
+machine without Node.
 
 ### 6. Run the frontend
 
@@ -124,6 +128,17 @@ npm run dev
 
 Starts the Vite dev server, which proxies `/api/**` to `http://localhost:8080` and talks to
 Keycloak directly on `:8180`.
+
+## Full stack via Docker
+
+```bash
+docker compose --profile full up -d --build
+```
+
+Builds and starts everything: Postgres (`:5434`), Keycloak (`:8180`), both Python services
+(`:8000`/`:8001`), and the backend jar with the bundled SPA (`http://localhost:8080`). The
+plain `docker compose up -d` (no profile) still starts only Keycloak for the local-dev
+workflow above.
 
 ## Running tests
 

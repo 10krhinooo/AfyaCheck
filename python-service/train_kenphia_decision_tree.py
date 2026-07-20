@@ -74,7 +74,18 @@ warnings.filterwarnings("ignore")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-KENPHIA_CSV = r"C:\Users\vkima\OneDrive\PycharmProjects\datasetExtractionANDCombination\dataset\kenphia_hiv_modeling_dataset.csv"
+# Overridable so the dataset doesn't have to live at one person's local path. The CSV is a
+# column subset of the raw KENPHIA 2018 adult interview .dta (see load_kenphia_respondents's
+# usecols) — scripts/notes: any pandas read_stata(columns=...) export with those columns works.
+KENPHIA_CSV = os.getenv(
+    "KENPHIA_CSV",
+    r"C:\Users\vkima\OneDrive\PycharmProjects\datasetExtractionANDCombination\dataset\kenphia_hiv_modeling_dataset.csv",
+)
+# Optional cap on respondents used for session simulation. Each respondent yields ~40
+# training rows (one per question step), so the full 42k-respondent file produces ~1.7M
+# in-memory feature dicts — more than a 16GB machine survives and far more than a
+# DecisionTreeClassifier needs. 0 means use everything.
+KENPHIA_SAMPLE = int(os.getenv("KENPHIA_SAMPLE", "0"))
 OUT_DIR = Path(__file__).parent / "decision_tree_model"
 OUT_MODEL_PATH = OUT_DIR / "kenphia_grounded_question_tree_model.joblib"
 OUT_METADATA_PATH = OUT_DIR / "kenphia_question_mapping_metadata.json"
@@ -540,6 +551,9 @@ def load_kenphia_respondents():
     ]
     df = pd.read_csv(KENPHIA_CSV, usecols=usecols, low_memory=False)
     logger.info(f"Loaded {len(df)} real KENPHIA adult respondents for profile grounding")
+    if KENPHIA_SAMPLE and len(df) > KENPHIA_SAMPLE:
+        df = df.sample(n=KENPHIA_SAMPLE, random_state=42).reset_index(drop=True)
+        logger.info(f"Sampled down to {len(df)} respondents (KENPHIA_SAMPLE={KENPHIA_SAMPLE})")
     return df
 
 
