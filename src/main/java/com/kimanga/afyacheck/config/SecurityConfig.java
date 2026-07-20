@@ -107,6 +107,7 @@ public class SecurityConfig {
                                 "/api/questionnaire/**",
                                 "/api/questions/**",
                                 "/api/results/**",
+                                "/api/health-centers/**",
                                 // Opt-in retest reminder: same anonymous access model as
                                 // /api/results/notify (and the same strict rate limit).
                                 "/api/reminders",

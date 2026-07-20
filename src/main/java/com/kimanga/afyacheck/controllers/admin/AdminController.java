@@ -3,6 +3,7 @@ package com.kimanga.afyacheck.controllers.admin;
 import com.kimanga.afyacheck.DTO.admin.AuditLogDTO;
 import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.DTO.admin.UserDTO;
+import com.kimanga.afyacheck.model.BlacklistedPlace;
 import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.service.AdminService;
@@ -208,6 +209,53 @@ public class AdminController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error updating health center"));
+        }
+    }
+
+    public record BlacklistedPlacesResponse(List<BlacklistedPlace> blacklistedPlaces) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/health-centers/blacklist")
+    public ResponseEntity<?> blacklistedPlaces() {
+        try {
+            return ResponseEntity.ok(new BlacklistedPlacesResponse(adminService.getBlacklistedPlaces()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Unable to load hidden health centers"));
+        }
+    }
+
+    public record BlacklistPlaceRequest(String placeId, String name) {}
+
+    // Hides a live Google Places result from the health-centers page's search supplement
+    // (curated centers use health-centers/delete instead, see above).
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/health-centers/blacklist/add")
+    public ResponseEntity<?> blacklistPlace(@RequestBody BlacklistPlaceRequest request) {
+        try {
+            ServiceResult<BlacklistedPlace> result = adminService.blacklistPlace(request.placeId(), request.name());
+            return result.isSuccess()
+                    ? ResponseEntity.ok(result.getData())
+                    : ResponseEntity.badRequest().body(Map.of("error", result.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error hiding health center"));
+        }
+    }
+
+    public record UnblacklistPlaceRequest(String placeId) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/health-centers/blacklist/remove")
+    public ResponseEntity<?> unblacklistPlace(@RequestBody UnblacklistPlaceRequest request) {
+        try {
+            ServiceResult<Void> result = adminService.unblacklistPlace(request.placeId());
+            return result.isSuccess()
+                    ? ResponseEntity.ok(Map.of("message", result.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("error", result.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error unhiding health center"));
         }
     }
 

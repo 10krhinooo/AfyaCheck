@@ -36,10 +36,18 @@ public class HealthCenterController {
         return Map.of("apiKey", apiKey);
     }
 
-    // Curated centers near the given point; the frontend falls back to a live Google Places
-    // search when this comes back empty (see useNearbyHealthCenters.ts).
+    // Curated centers near the given point; the frontend merges these with a live Google
+    // Places search (see useNearbyHealthCenters.ts).
     @GetMapping("/api/health-centers/nearby")
     public List<HealthCenter> nearby(@RequestParam double lat, @RequestParam double lng) {
         return healthCenterService.findNearby(lat, lng, DEFAULT_RADIUS_KM);
+    }
+
+    // Google place_ids an admin has hidden from the live-search supplement; the frontend
+    // filters these out of the Places results before merging (see AdminController's
+    // /admin/health-centers/blacklist for how entries get added).
+    @GetMapping("/api/health-centers/blacklisted-place-ids")
+    public List<String> blacklistedPlaceIds() {
+        return healthCenterService.blacklistedPlaceIds();
     }
 }

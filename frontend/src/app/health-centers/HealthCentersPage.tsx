@@ -3,18 +3,30 @@ import { useState } from 'react'
 import { Button } from '../../components/Button'
 import { Skeleton } from '../../components/Skeleton'
 import { StatusMessage } from '../../components/StatusMessage'
+import { apiPost } from '../../lib/api-client'
+import { useAuth } from '../../lib/auth/AuthContext'
 import { CenterList } from './CenterList'
 import { KENYA_COUNTIES } from './counties'
 import { MapView } from './MapView'
+import type { HealthCenter } from './types'
 import { useGoogleMaps } from './useGoogleMaps'
 import { useNearbyHealthCenters } from './useNearbyHealthCenters'
 
 export default function HealthCentersPage() {
+  const { isAdmin } = useAuth()
   const { status: mapsStatus, retry: retryMaps } = useGoogleMaps()
-  const { status, centers, origin, error, locationDenied, searchFrom, retry: retryCenters } =
+  const { status, centers, origin, error, locationDenied, searchFrom, retry: retryCenters, hideCenter } =
     useNearbyHealthCenters(mapsStatus === 'ready')
   const [county, setCounty] = useState('')
   const [stiOnly, setStiOnly] = useState(false)
+
+  function handleHide(center: HealthCenter) {
+    if (!center.placeId) return
+    hideCenter(center.id)
+    apiPost('/api/admin/health-centers/blacklist/add', { placeId: center.placeId, name: center.name }).catch(
+      () => {},
+    )
+  }
 
   // Live Places results have unknown STI-testing status: the filter only excludes centers
   // explicitly curated as not offering it.
@@ -141,7 +153,9 @@ export default function HealthCentersPage() {
         </p>
       )}
 
-      {visibleCenters.length > 0 && <CenterList centers={visibleCenters} />}
+      {visibleCenters.length > 0 && (
+        <CenterList centers={visibleCenters} canHide={isAdmin} onHide={handleHide} />
+      )}
     </main>
   )
 }

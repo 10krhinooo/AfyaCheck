@@ -41,7 +41,10 @@ export function useGoogleMaps(): { status: Status; retry: () => void } {
         }
 
         const script = document.createElement('script')
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places`
+        // loading=async is Google's own recommended query param (distinct from the script
+        // tag's async attribute below) — without it the JS API logs a console warning that
+        // it's blocking parsing while it bootstraps.
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&loading=async`
         script.async = true
         script.onload = () => {
           if (!cancelled) setStatus('ready')

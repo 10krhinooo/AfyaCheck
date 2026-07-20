@@ -10,6 +10,12 @@ export interface HealthCenter {
   distanceKm?: number
   lat: number
   lng: number
+  // 'curated' rows come from the admin-managed DB; 'live' rows come from a live Google
+  // Places search. Only 'live' centers can be hidden (see placeId/blacklist below), since
+  // curated ones are already removable via the admin health-center CRUD.
+  source: 'curated' | 'live'
+  // Google's place_id, only set for source: 'live'. Used as the blacklist key.
+  placeId?: string
 }
 
 // Shape returned by GET /api/health-centers/nearby (admin-curated centers, see AdminController).

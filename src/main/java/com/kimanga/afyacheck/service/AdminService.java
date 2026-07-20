@@ -5,6 +5,7 @@ import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.DTO.admin.UserDTO;
 import com.kimanga.afyacheck.model.AdminAuditLog;
 import com.kimanga.afyacheck.model.Answer;
+import com.kimanga.afyacheck.model.BlacklistedPlace;
 import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.model.User;
@@ -27,6 +28,7 @@ public class AdminService {
     private final AnswerRepository answerRepository;
     private final AdminAuditLogRepository adminAuditLogRepository;
     private final HealthCenterRepository healthCenterRepository;
+    private final BlacklistedPlaceRepository blacklistedPlaceRepository;
     private final RiskAssessmentRepository riskAssessmentRepository;
     // Remove sessionRepository dependency since we're not using it
 
@@ -353,6 +355,43 @@ public class AdminService {
             return ServiceResult.success("Health center updated successfully", saved);
         } catch (Exception e) {
             return ServiceResult.failure("Error updating health center: " + e.getMessage());
+        }
+    }
+
+    public List<BlacklistedPlace> getBlacklistedPlaces() {
+        try {
+            return blacklistedPlaceRepository.findAllByOrderByCreatedAtDesc();
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    public ServiceResult<BlacklistedPlace> blacklistPlace(String placeId, String name) {
+        try {
+            if (placeId == null || placeId.isBlank()) {
+                return ServiceResult.failure("A place ID is required");
+            }
+            if (blacklistedPlaceRepository.existsByPlaceId(placeId)) {
+                return ServiceResult.failure("This place is already hidden");
+            }
+            BlacklistedPlace entry = new BlacklistedPlace();
+            entry.setPlaceId(placeId);
+            entry.setName(name);
+            BlacklistedPlace saved = blacklistedPlaceRepository.save(entry);
+            logAction("BLACKLIST_HEALTH_CENTER", "HEALTH_CENTER_BLACKLIST", placeId, name);
+            return ServiceResult.success("Health center hidden", saved);
+        } catch (Exception e) {
+            return ServiceResult.failure("Error hiding health center: " + e.getMessage());
+        }
+    }
+
+    public ServiceResult<Void> unblacklistPlace(String placeId) {
+        try {
+            blacklistedPlaceRepository.deleteByPlaceId(placeId);
+            logAction("UNBLACKLIST_HEALTH_CENTER", "HEALTH_CENTER_BLACKLIST", placeId, null);
+            return ServiceResult.success("Health center unhidden", null);
+        } catch (Exception e) {
+            return ServiceResult.failure("Error unhiding health center: " + e.getMessage());
         }
     }
 

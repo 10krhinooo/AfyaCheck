@@ -5,12 +5,14 @@ import com.kimanga.afyacheck.DTO.admin.UserDTO;
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import com.kimanga.afyacheck.model.AdminAuditLog;
 import com.kimanga.afyacheck.model.Answer;
+import com.kimanga.afyacheck.model.BlacklistedPlace;
 import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.model.User;
 import com.kimanga.afyacheck.model.UserRole;
 import com.kimanga.afyacheck.repository.AdminAuditLogRepository;
 import com.kimanga.afyacheck.repository.AnswerRepository;
+import com.kimanga.afyacheck.repository.BlacklistedPlaceRepository;
 import com.kimanga.afyacheck.repository.HealthCenterRepository;
 import com.kimanga.afyacheck.repository.QuestionRepository;
 import com.kimanga.afyacheck.repository.RiskAssessmentRepository;
@@ -41,6 +43,7 @@ class AdminServiceTest {
     private AnswerRepository answerRepository;
     private AdminAuditLogRepository adminAuditLogRepository;
     private HealthCenterRepository healthCenterRepository;
+    private BlacklistedPlaceRepository blacklistedPlaceRepository;
     private RiskAssessmentRepository riskAssessmentRepository;
     private AdminService adminService;
 
@@ -51,8 +54,9 @@ class AdminServiceTest {
         answerRepository = mock(AnswerRepository.class);
         adminAuditLogRepository = mock(AdminAuditLogRepository.class);
         healthCenterRepository = mock(HealthCenterRepository.class);
+        blacklistedPlaceRepository = mock(BlacklistedPlaceRepository.class);
         riskAssessmentRepository = mock(RiskAssessmentRepository.class);
-        adminService = new AdminService(userRepository, questionRepository, answerRepository, adminAuditLogRepository, healthCenterRepository, riskAssessmentRepository);
+        adminService = new AdminService(userRepository, questionRepository, answerRepository, adminAuditLogRepository, healthCenterRepository, blacklistedPlaceRepository, riskAssessmentRepository);
     }
 
     @AfterEach
