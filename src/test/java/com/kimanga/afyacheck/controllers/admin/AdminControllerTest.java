@@ -5,6 +5,8 @@ import com.kimanga.afyacheck.DTO.admin.DashboardStats;
 import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.service.AdminService;
+import com.kimanga.afyacheck.service.DecisionTreeClient;
+import com.kimanga.afyacheck.service.MLService;
 import com.kimanga.afyacheck.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -25,7 +27,9 @@ class AdminControllerTest {
 
     private final AdminService adminService = mock(AdminService.class);
     private final UserService userService = mock(UserService.class);
-    private final AdminController controller = new AdminController(adminService, userService);
+    private final MLService mlService = mock(MLService.class);
+    private final DecisionTreeClient decisionTreeClient = mock(DecisionTreeClient.class);
+    private final AdminController controller = new AdminController(adminService, userService, mlService, decisionTreeClient);
 
     private DashboardStats stats() {
         DashboardStats stats = new DashboardStats();
@@ -287,5 +291,30 @@ class AdminControllerTest {
                 controller.promoteToAdmin(new AdminController.PromoteAdminRequest("nobody@example.com"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void modelOpsCombinesStatsWithServiceHealth() {
+        when(adminService.getModelOpsStats()).thenReturn(Map.of("totalAssessments", 5L));
+        when(mlService.isServiceHealthy()).thenReturn(true);
+        when(decisionTreeClient.isServiceHealthy()).thenReturn(false);
+
+        ResponseEntity<?> response = controller.modelOps();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        var body = (Map<String, Object>) response.getBody();
+        assertThat(body.get("totalAssessments")).isEqualTo(5L);
+        assertThat(body.get("mlServiceHealthy")).isEqualTo(true);
+        assertThat(body.get("decisionTreeServiceHealthy")).isEqualTo(false);
+    }
+
+    @Test
+    void modelOpsReturns500OnException() {
+        when(adminService.getModelOpsStats()).thenThrow(new RuntimeException("boom"));
+
+        ResponseEntity<?> response = controller.modelOps();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

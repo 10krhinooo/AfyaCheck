@@ -35,6 +35,16 @@ public interface RiskAssessmentRepository extends JpaRepository<RiskAssessment, 
     // Delete all risk assessments for a session
     void deleteBySession_SessionId(String sessionId);
 
+    // Model-ops analytics (AdminService.getModelOpsStats)
+    @Query("SELECT ra.riskLevel, COUNT(ra) FROM RiskAssessment ra GROUP BY ra.riskLevel")
+    List<Object[]> countGroupedByRiskLevel();
+
+    @Query("SELECT ra.modelVersion, COUNT(ra), AVG(ra.riskScore) FROM RiskAssessment ra GROUP BY ra.modelVersion ORDER BY COUNT(ra) DESC")
+    List<Object[]> countGroupedByModelVersion();
+
+    @Query("SELECT CAST(ra.createdAt AS date), COUNT(ra) FROM RiskAssessment ra WHERE ra.createdAt >= :since GROUP BY CAST(ra.createdAt AS date) ORDER BY CAST(ra.createdAt AS date)")
+    List<Object[]> countByDaySince(@Param("since") java.util.Date since);
+
     // Bulk retention purge (DataRetentionService) — must run before the Session bulk delete.
     @org.springframework.data.jpa.repository.Modifying
     @Query("DELETE FROM RiskAssessment ra WHERE ra.session IN (SELECT s FROM Session s WHERE s.createdAt < :cutoff)")

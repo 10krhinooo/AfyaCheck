@@ -17,6 +17,21 @@ export interface AdminDashboardResponse {
   recentUsers: AdminUser[]
 }
 
+export interface ModelVersionStat {
+  modelVersion: string
+  count: number
+  avgRiskScore: number | null
+}
+
+export interface ModelOpsResponse {
+  totalAssessments: number
+  riskLevelCounts: Record<string, number>
+  modelVersions: ModelVersionStat[]
+  assessmentsPerDay: { date: string; count: number }[]
+  mlServiceHealthy: boolean
+  decisionTreeServiceHealthy: boolean
+}
+
 export interface AdminUser {
   id: string
   name: string

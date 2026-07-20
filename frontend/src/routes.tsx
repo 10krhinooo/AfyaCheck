@@ -53,6 +53,7 @@ export const routes: RouteRecord[] = [
       { path: 'app/admin/admins', lazy: () => import('./app/admin/AdminAdminsPage.lazy') },
       { path: 'app/admin/questions', lazy: () => import('./app/admin/AdminQuestionsPage.lazy') },
       { path: 'app/admin/health-centers', lazy: () => import('./app/admin/AdminHealthCentersPage.lazy') },
+      { path: 'app/admin/model-ops', lazy: () => import('./app/admin/AdminModelOpsPage.lazy') },
       { path: 'app/admin/audit-log', lazy: () => import('./app/admin/AdminAuditLogPage.lazy') },
       { path: '*', element: <NotFound /> },
     ],

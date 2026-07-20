@@ -6,6 +6,8 @@ import com.kimanga.afyacheck.DTO.admin.UserDTO;
 import com.kimanga.afyacheck.model.HealthCenter;
 import com.kimanga.afyacheck.model.Question;
 import com.kimanga.afyacheck.service.AdminService;
+import com.kimanga.afyacheck.service.DecisionTreeClient;
+import com.kimanga.afyacheck.service.MLService;
 import com.kimanga.afyacheck.service.UserService;
 import com.kimanga.afyacheck.DTO.ServiceResult;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,8 @@ public class AdminController {
 
     private final AdminService adminService;
     private final UserService userService;
+    private final MLService mlService;
+    private final DecisionTreeClient decisionTreeClient;
 
     public record DashboardResponse(
             long totalUsers,
@@ -69,6 +73,25 @@ public class AdminController {
 
     private long orZero(Long value) {
         return value != null ? value : 0;
+    }
+
+    /**
+     * Model-ops panel: assessment volume/severity aggregated by risk level, model version,
+     * and day, plus live health of the two Python services. The health probes are real HTTP
+     * calls, acceptable on an admin-only, manually-loaded page.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/model-ops")
+    public ResponseEntity<?> modelOps() {
+        try {
+            Map<String, Object> body = new java.util.LinkedHashMap<>(adminService.getModelOpsStats());
+            body.put("mlServiceHealthy", mlService.isServiceHealthy());
+            body.put("decisionTreeServiceHealthy", decisionTreeClient.isServiceHealthy());
+            return ResponseEntity.ok(body);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Unable to load model ops data"));
+        }
     }
 
     public record QuestionsResponse(

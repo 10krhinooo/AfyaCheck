@@ -27,6 +27,7 @@ public class AdminService {
     private final AnswerRepository answerRepository;
     private final AdminAuditLogRepository adminAuditLogRepository;
     private final HealthCenterRepository healthCenterRepository;
+    private final RiskAssessmentRepository riskAssessmentRepository;
     // Remove sessionRepository dependency since we're not using it
 
     public DashboardStats getDashboardStats() {
@@ -353,6 +354,47 @@ public class AdminService {
         } catch (Exception e) {
             return ServiceResult.failure("Error updating health center: " + e.getMessage());
         }
+    }
+
+    // Model ops: aggregate stats over stored risk assessments, grouped so admins can see
+    // which model versions produced what volume/severity of assessments over time.
+    public Map<String, Object> getModelOpsStats() {
+        Map<String, Object> stats = new HashMap<>();
+        try {
+            stats.put("totalAssessments", riskAssessmentRepository.count());
+
+            Map<String, Long> riskLevelCounts = new LinkedHashMap<>();
+            for (Object[] row : riskAssessmentRepository.countGroupedByRiskLevel()) {
+                riskLevelCounts.put(row[0] != null ? row[0].toString() : "Unknown", (Long) row[1]);
+            }
+            stats.put("riskLevelCounts", riskLevelCounts);
+
+            List<Map<String, Object>> modelVersions = new ArrayList<>();
+            for (Object[] row : riskAssessmentRepository.countGroupedByModelVersion()) {
+                Map<String, Object> version = new LinkedHashMap<>();
+                version.put("modelVersion", row[0] != null ? row[0].toString() : "unknown");
+                version.put("count", row[1]);
+                version.put("avgRiskScore", row[2] != null ? Math.round(((Number) row[2]).doubleValue() * 10.0) / 10.0 : null);
+                modelVersions.add(version);
+            }
+            stats.put("modelVersions", modelVersions);
+
+            Date thirtyDaysAgo = Date.from(java.time.Instant.now().minus(java.time.Duration.ofDays(30)));
+            List<Map<String, Object>> perDay = new ArrayList<>();
+            for (Object[] row : riskAssessmentRepository.countByDaySince(thirtyDaysAgo)) {
+                Map<String, Object> day = new LinkedHashMap<>();
+                day.put("date", row[0] != null ? row[0].toString() : null);
+                day.put("count", row[1]);
+                perDay.add(day);
+            }
+            stats.put("assessmentsPerDay", perDay);
+        } catch (Exception e) {
+            stats.put("totalAssessments", 0L);
+            stats.put("riskLevelCounts", Map.of());
+            stats.put("modelVersions", List.of());
+            stats.put("assessmentsPerDay", List.of());
+        }
+        return stats;
     }
 
     private void logAction(String action, String targetType, String targetId, String details) {
