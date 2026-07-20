@@ -1,5 +1,9 @@
 package com.kimanga.afyacheck.config;
 
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -11,8 +15,13 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +57,32 @@ public class SecurityConfig {
             KeycloakUserSyncFilter keycloakUserSyncFilter,
             AuditingAccessDeniedHandler auditingAccessDeniedHandler) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                // Double-submit cookie CSRF (Spring's documented pattern for a same-origin SPA):
+                // the token rides in a JS-readable cookie, api-client.ts echoes it back as the
+                // X-XSRF-TOKEN header on every mutating request. Needed because the anonymous
+                // questionnaire flow's /api/questionnaire/start relies on the ambient JSESSIONID
+                // cookie alone (see KeycloakUserSyncFilter's JWT-bearer paths, which aren't
+                // cookie-authenticated and so aren't CSRF-exploitable in the first place, but the
+                // filter applies uniformly since that's simpler to reason about than a per-route
+                // carve-out).
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                )
+                // CookieCsrfTokenRepository only writes the cookie once something actually reads
+                // the deferred CsrfToken; without forcing that read here, a browser's first
+                // (GET) page load never receives the cookie, so the first POST/DELETE 403s.
+                .addFilterAfter(new OncePerRequestFilter() {
+                    @Override
+                    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                            FilterChain filterChain) throws ServletException, IOException {
+                        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+                        if (csrfToken != null) {
+                            csrfToken.getToken();
+                        }
+                        filterChain.doFilter(request, response);
+                    }
+                }, BearerTokenAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions.accessDeniedHandler(auditingAccessDeniedHandler))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)

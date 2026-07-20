@@ -40,7 +40,7 @@ class KeycloakUserSyncFilterTest {
                 Instant.now(),
                 Instant.now().plusSeconds(60),
                 Map.of("alg", "none"),
-                Map.of("sub", sub, "email", email, "name", name));
+                Map.of("sub", sub, "email", email, "name", name, "email_verified", true));
     }
 
     @Test

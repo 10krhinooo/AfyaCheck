@@ -439,9 +439,7 @@ class HIVRiskPredictor:
             'sti_symptoms', 'previous_sti', 'transactional_sex'
         ]
 
-        logger.info(f"=== ZERO-ENCODING DEBUG ===")
-        logger.info(f"User sexual_activity: {sexual_activity}")
-        logger.info(f"Is NOT sexually active: {is_not_sexually_active}")
+        logger.debug("Zero-encoding sexual risk features; is_not_sexually_active=%s", is_not_sexually_active)
 
         # Age (numeric)
         age = answers.get('age', '30')
@@ -472,7 +470,6 @@ class HIVRiskPredictor:
         sexual_partners = answers.get('sexual_partners', '0').lower()
         if is_not_sexually_active:
             features['sexual_partners'] = 0  # Force zero partners
-            logger.info("🔒 ZEROING sexual_partners due to no sexual activity")
         else:
             # FIX: Handle numeric values above the mapping
             if sexual_partners.isdigit():
@@ -483,74 +480,59 @@ class HIVRiskPredictor:
                     features['sexual_partners'] = partners_count
             else:
                 features['sexual_partners'] = self.sexual_partners_mapping.get(sexual_partners, 0)
-            logger.info(f"✅ Sexual partners: {features['sexual_partners']} (from input: {sexual_partners})")
 
         # Condom Use Frequency (categorical)
         condom_use = answers.get('condom_use', 'always').lower()
         if is_not_sexually_active:
             features['condom_use'] = 0  # Force lowest risk (always)
-            logger.info("🔒 ZEROING condom_use due to no sexual activity")
         else:
             features['condom_use'] = self.condom_use_mapping.get(condom_use, 0)
-            logger.info(f"✅ Condom use: {features['condom_use']} (from input: {condom_use})")
 
         # Sexual Activity (categorical)
         features['sexual_activity'] = self.yes_no_mapping.get(sexual_activity, 0)
-        logger.info(f"✅ Sexual activity encoded: {features['sexual_activity']}")
 
         # Recent Partners (numeric/categorical)
         recent_partners = answers.get('recent_partners', '0')
         if is_not_sexually_active:
             features['recent_partners'] = 0
-            logger.info("🔒 ZEROING recent_partners due to no sexual activity")
         else:
             try:
                 features['recent_partners'] = int(recent_partners) if recent_partners.isdigit() else 0
             except ValueError:
                 features['recent_partners'] = 0
-            logger.info(f"✅ Recent partners: {features['recent_partners']}")
 
         # High Risk Partner (categorical)
         high_risk_partner = answers.get('high_risk_partner', 'no').lower()
         if is_not_sexually_active:
             features['high_risk_partner'] = 0
-            logger.info("🔒 ZEROING high_risk_partner due to no sexual activity")
         else:
             features['high_risk_partner'] = self.yes_no_mapping.get(high_risk_partner, 0)
-            logger.info(f"✅ High risk partner: {features['high_risk_partner']}")
 
         # STI Symptoms (categorical)
         sti_symptoms = answers.get('sti_symptoms', 'no').lower()
         if is_not_sexually_active:
             features['sti_symptoms'] = 0
-            logger.info("🔒 ZEROING sti_symptoms due to no sexual activity")
         else:
             features['sti_symptoms'] = self.yes_no_mapping.get(sti_symptoms, 0)
-            logger.info(f"✅ STI symptoms: {features['sti_symptoms']}")
 
         # Previous STI (categorical)
         previous_sti = answers.get('previous_sti', 'no').lower()
         if is_not_sexually_active:
             features['previous_sti'] = 0
-            logger.info("🔒 ZEROING previous_sti due to no sexual activity")
         else:
             features['previous_sti'] = self.yes_no_mapping.get(previous_sti, 0)
-            logger.info(f"✅ Previous STI: {features['previous_sti']}")
 
         # Transactional Sex (categorical)
         transactional_sex = answers.get('transactional_sex', 'no').lower()
         if is_not_sexually_active:
             features['transactional_sex'] = 0
-            logger.info("🔒 ZEROING transactional_sex due to no sexual activity")
         else:
             features['transactional_sex'] = self.yes_no_mapping.get(transactional_sex, 0)
-            logger.info(f"✅ Transactional sex: {features['transactional_sex']}")
 
         # Ensure all feature columns are present in correct order
         feature_vector = [features.get(col, 0) for col in self.feature_columns]
 
-        logger.info(f"Final feature vector: {feature_vector}")
-        logger.info(f"=== END ZERO-ENCODING DEBUG ===")
+        logger.debug("Feature vector length=%d", len(feature_vector))
         return feature_vector
 
     def predict(self, answers: Dict[str, str]) -> Dict[str, Any]:
@@ -842,7 +824,7 @@ async def predict(request: PredictionRequest):
         logger.error(f"❌ Unexpected error in prediction: {e}")
         return PredictionResponse(
             success=False,
-            error=f"Internal server error: {str(e)}",
+            error="Internal server error",
             timestamp=datetime.now().isoformat(),
             hivProbability=0.0,
             riskScore=0,
@@ -990,10 +972,11 @@ async def test_prediction():
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
+        logger.error(f"Test prediction failed: {e}")
         return {
             "success": False,
             "model_loaded": predictor.model is not None,
-            "error": str(e),
+            "error": "Internal server error",
             "timestamp": datetime.now().isoformat()
         }
 

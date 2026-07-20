@@ -23,8 +23,21 @@ function currentLanguage(): string {
   return window.localStorage.getItem('afyacheck-lang') ?? 'en'
 }
 
+// Spring's CookieCsrfTokenRepository (see SecurityConfig) writes the token into a JS-readable
+// XSRF-TOKEN cookie; echoing it back as this header is the other half of the double-submit
+// pattern. Read fresh per request since a page load's first GET is what sets the cookie.
+function csrfToken(): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS', 'TRACE'])
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken()
+  const method = (init?.method ?? 'GET').toUpperCase()
+  const xsrfToken = SAFE_METHODS.has(method) ? null : csrfToken()
 
   const response = await fetch(path, {
     ...init,
@@ -33,6 +46,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       'Content-Type': 'application/json',
       'Accept-Language': currentLanguage(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
       ...init?.headers,
     },
   })
