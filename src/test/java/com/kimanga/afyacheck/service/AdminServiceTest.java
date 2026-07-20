@@ -392,6 +392,84 @@ class AdminServiceTest {
     }
 
     @Test
+    void getBlacklistedPlacesReturnsRepositoryResult() {
+        BlacklistedPlace place = new BlacklistedPlace();
+        place.setPlaceId("place-1");
+        when(blacklistedPlaceRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(place));
+
+        List<BlacklistedPlace> result = adminService.getBlacklistedPlaces();
+
+        assertThat(result).containsExactly(place);
+    }
+
+    @Test
+    void getBlacklistedPlacesFallsBackOnException() {
+        when(blacklistedPlaceRepository.findAllByOrderByCreatedAtDesc()).thenThrow(new RuntimeException("boom"));
+
+        List<BlacklistedPlace> result = adminService.getBlacklistedPlaces();
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void blacklistPlaceFailsWhenPlaceIdBlank() {
+        ServiceResult<BlacklistedPlace> result = adminService.blacklistPlace("  ", "Some Clinic");
+
+        assertThat(result.isSuccess()).isFalse();
+        verifyNoInteractions(blacklistedPlaceRepository);
+    }
+
+    @Test
+    void blacklistPlaceFailsWhenAlreadyBlacklisted() {
+        when(blacklistedPlaceRepository.existsByPlaceId("place-1")).thenReturn(true);
+
+        ServiceResult<BlacklistedPlace> result = adminService.blacklistPlace("place-1", "Some Clinic");
+
+        assertThat(result.isSuccess()).isFalse();
+        verify(blacklistedPlaceRepository, never()).save(any());
+    }
+
+    @Test
+    void blacklistPlaceSavesNewEntry() {
+        when(blacklistedPlaceRepository.existsByPlaceId("place-1")).thenReturn(false);
+        when(blacklistedPlaceRepository.save(any(BlacklistedPlace.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ServiceResult<BlacklistedPlace> result = adminService.blacklistPlace("place-1", "Some Clinic");
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getData().getPlaceId()).isEqualTo("place-1");
+        assertThat(result.getData().getName()).isEqualTo("Some Clinic");
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
+    }
+
+    @Test
+    void blacklistPlaceFailsOnException() {
+        when(blacklistedPlaceRepository.existsByPlaceId("place-1")).thenThrow(new RuntimeException("boom"));
+
+        ServiceResult<BlacklistedPlace> result = adminService.blacklistPlace("place-1", "Some Clinic");
+
+        assertThat(result.isSuccess()).isFalse();
+    }
+
+    @Test
+    void unblacklistPlaceDeletesEntry() {
+        ServiceResult<Void> result = adminService.unblacklistPlace("place-1");
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(blacklistedPlaceRepository).deleteByPlaceId("place-1");
+        verify(adminAuditLogRepository).save(any(AdminAuditLog.class));
+    }
+
+    @Test
+    void unblacklistPlaceFailsOnException() {
+        doThrow(new RuntimeException("boom")).when(blacklistedPlaceRepository).deleteByPlaceId("place-1");
+
+        ServiceResult<Void> result = adminService.unblacklistPlace("place-1");
+
+        assertThat(result.isSuccess()).isFalse();
+    }
+
+    @Test
     void getAnswerStatisticsComputesAverageWhenQuestionsExist() {
         when(answerRepository.count()).thenReturn(10L);
         when(questionRepository.countByIsActiveTrue()).thenReturn(5L);

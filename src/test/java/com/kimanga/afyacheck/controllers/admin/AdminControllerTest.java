@@ -272,6 +272,85 @@ class AdminControllerTest {
     }
 
     @Test
+    void blacklistedPlacesReturnsOkWithList() {
+        when(adminService.getBlacklistedPlaces()).thenReturn(List.of());
+
+        ResponseEntity<?> response = controller.blacklistedPlaces();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        var body = (AdminController.BlacklistedPlacesResponse) response.getBody();
+        assertThat(body.blacklistedPlaces()).isEmpty();
+    }
+
+    @Test
+    void blacklistedPlacesReturns500OnException() {
+        when(adminService.getBlacklistedPlaces()).thenThrow(new RuntimeException("boom"));
+
+        ResponseEntity<?> response = controller.blacklistedPlaces();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void blacklistPlaceReturnsOkOnSuccess() {
+        when(adminService.blacklistPlace("place-1", "Some Clinic"))
+                .thenReturn(ServiceResult.success("Health center hidden", new com.kimanga.afyacheck.model.BlacklistedPlace()));
+
+        ResponseEntity<?> response =
+                controller.blacklistPlace(new AdminController.BlacklistPlaceRequest("place-1", "Some Clinic"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void blacklistPlaceReturnsBadRequestOnFailureResult() {
+        when(adminService.blacklistPlace("place-1", "Some Clinic"))
+                .thenReturn(ServiceResult.failure("already hidden"));
+
+        ResponseEntity<?> response =
+                controller.blacklistPlace(new AdminController.BlacklistPlaceRequest("place-1", "Some Clinic"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void blacklistPlaceReturns500OnException() {
+        when(adminService.blacklistPlace(anyString(), anyString())).thenThrow(new RuntimeException("boom"));
+
+        ResponseEntity<?> response =
+                controller.blacklistPlace(new AdminController.BlacklistPlaceRequest("place-1", "Some Clinic"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void unblacklistPlaceReturnsOkOnSuccess() {
+        when(adminService.unblacklistPlace("place-1")).thenReturn(ServiceResult.success("Health center unhidden", null));
+
+        ResponseEntity<?> response = controller.unblacklistPlace(new AdminController.UnblacklistPlaceRequest("place-1"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void unblacklistPlaceReturnsBadRequestOnFailureResult() {
+        when(adminService.unblacklistPlace("place-1")).thenReturn(ServiceResult.failure("not hidden"));
+
+        ResponseEntity<?> response = controller.unblacklistPlace(new AdminController.UnblacklistPlaceRequest("place-1"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void unblacklistPlaceReturns500OnException() {
+        when(adminService.unblacklistPlace(anyString())).thenThrow(new RuntimeException("boom"));
+
+        ResponseEntity<?> response = controller.unblacklistPlace(new AdminController.UnblacklistPlaceRequest("place-1"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
     void promoteToAdminReturnsOkOnSuccess() {
         when(userService.promoteToAdmin(eq("user@example.com"), any()))
                 .thenReturn(ServiceResult.success("user@example.com is now an admin", null));
