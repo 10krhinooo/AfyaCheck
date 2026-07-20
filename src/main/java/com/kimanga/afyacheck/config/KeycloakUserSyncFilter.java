@@ -14,6 +14,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -33,6 +35,8 @@ import java.time.LocalDateTime;
  */
 @Component
 public class KeycloakUserSyncFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(KeycloakUserSyncFilter.class);
 
     private final UserRepository userRepository;
 
@@ -55,6 +59,7 @@ public class KeycloakUserSyncFilter extends OncePerRequestFilter {
         String keycloakId = jwt.getSubject();
         String email = jwt.getClaimAsString("email");
         String name = jwt.getClaimAsString("name");
+        boolean emailVerified = Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified"));
         boolean isAdmin = jwtAuth.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
         UserRole role = isAdmin ? UserRole.ADMIN : UserRole.USER;
@@ -64,11 +69,15 @@ public class KeycloakUserSyncFilter extends OncePerRequestFilter {
         // docker compose down/--force-recreate"), so a realm re-import mints a fresh subject
         // UUID for the same email. Without this fallback, findByKeycloakId misses and the save
         // below tries to INSERT a second row with that email, violating the unique constraint.
+        // Gated on email_verified so an account with an unverified/unproven email claim can't
+        // rebind an existing user's row to a different Keycloak subject.
         User user = userRepository.findByKeycloakId(keycloakId)
-                .or(() -> userRepository.findByEmail(email).map(existing -> {
+                .or(() -> emailVerified ? userRepository.findByEmail(email).map(existing -> {
+                    log.warn("Re-linking local user id={} email={} from keycloakId={} to keycloakId={}",
+                            existing.getId(), email, existing.getKeycloakId(), keycloakId);
                     existing.setKeycloakId(keycloakId);
                     return existing;
-                }))
+                }) : java.util.Optional.empty())
                 .orElseGet(() -> {
                     User created = new User();
                     created.setKeycloakId(keycloakId);
