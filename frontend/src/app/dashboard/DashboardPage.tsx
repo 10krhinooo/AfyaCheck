@@ -7,7 +7,7 @@ import { Card } from '../../components/Card'
 import { LinkButton } from '../../components/Button'
 import { Skeleton } from '../../components/Skeleton'
 import { StatusMessage } from '../../components/StatusMessage'
-import { apiFetch } from '../../lib/api-client'
+import { apiFetch, ApiError } from '../../lib/api-client'
 
 interface DashboardResponse {
   username: string
@@ -15,6 +15,7 @@ interface DashboardResponse {
 }
 
 const LOAD_ERROR = 'We couldn’t load your dashboard. Check your connection and try again.'
+const SESSION_EXPIRED = 'Your session has expired. Redirecting you to sign in…'
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardResponse | null>(null)
@@ -25,7 +26,7 @@ export default function DashboardPage() {
     setError(null)
     apiFetch<DashboardResponse>('/api/dashboard')
       .then(setData)
-      .catch(() => setError(LOAD_ERROR))
+      .catch((err) => setError(err instanceof ApiError && err.status === 401 ? SESSION_EXPIRED : LOAD_ERROR))
   }, [attempt])
 
   if (error) {
@@ -34,11 +35,15 @@ export default function DashboardPage() {
         <div className="inline-flex text-left">
           <StatusMessage tone="error">{error}</StatusMessage>
         </div>
-        <div>
-          <Button variant="secondary" className="mt-6" onClick={() => setAttempt((a) => a + 1)}>
-            Try again
-          </Button>
-        </div>
+        {/* ApiError already triggers a login() redirect for 401s (see api-client.ts); a retry
+            button here would just re-fetch with the same invalid session and 401 again. */}
+        {error !== SESSION_EXPIRED && (
+          <div>
+            <Button variant="secondary" className="mt-6" onClick={() => setAttempt((a) => a + 1)}>
+              Try again
+            </Button>
+          </div>
+        )}
       </main>
     )
   }

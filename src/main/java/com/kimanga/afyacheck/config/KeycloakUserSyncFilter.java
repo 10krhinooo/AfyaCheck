@@ -59,14 +59,24 @@ public class KeycloakUserSyncFilter extends OncePerRequestFilter {
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
         UserRole role = isAdmin ? UserRole.ADMIN : UserRole.USER;
 
-        User user = userRepository.findByKeycloakId(keycloakId).orElseGet(() -> {
-            User created = new User();
-            created.setKeycloakId(keycloakId);
-            created.setProvider(AuthProvider.KEYCLOAK);
-            created.setEnabled(true);
-            created.setEmailVerified(true);
-            return created;
-        });
+        // Falls back to matching by email (and re-linking the keycloakId) before creating a new
+        // row: Keycloak's dev storage is ephemeral (see README, "nothing is persisted across
+        // docker compose down/--force-recreate"), so a realm re-import mints a fresh subject
+        // UUID for the same email. Without this fallback, findByKeycloakId misses and the save
+        // below tries to INSERT a second row with that email, violating the unique constraint.
+        User user = userRepository.findByKeycloakId(keycloakId)
+                .or(() -> userRepository.findByEmail(email).map(existing -> {
+                    existing.setKeycloakId(keycloakId);
+                    return existing;
+                }))
+                .orElseGet(() -> {
+                    User created = new User();
+                    created.setKeycloakId(keycloakId);
+                    created.setProvider(AuthProvider.KEYCLOAK);
+                    created.setEnabled(true);
+                    created.setEmailVerified(true);
+                    return created;
+                });
 
         user.setEmail(email);
         user.setName(name != null ? name : email);
