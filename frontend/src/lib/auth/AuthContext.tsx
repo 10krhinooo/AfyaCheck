@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthState>({
 })
 
 // Keycloak's realm-roles protocol mapper only puts realm_access on the access token by
-// default (not the ID token, i.e. not user.profile) — same claim the backend reads off the
+// default (not the ID token, i.e. not user.profile), same claim the backend reads off the
 // bearer token in SecurityConfig/DashboardController, so decode it the same way here rather
 // than trusting the ID token to carry a claim it never will unless the realm config changes.
 function isAdminUser(user: User | null): boolean {

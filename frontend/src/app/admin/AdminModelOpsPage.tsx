@@ -110,7 +110,7 @@ export default function AdminModelOpsPage() {
                       >
                         <td className="py-2 font-mono text-ink">{version.modelVersion}</td>
                         <td className="py-2 text-ink-soft">{version.count}</td>
-                        <td className="py-2 text-ink-soft">{version.avgRiskScore ?? '—'}</td>
+                        <td className="py-2 text-ink-soft">{version.avgRiskScore ?? 'None'}</td>
                       </tr>
                     ))}
                   </tbody>

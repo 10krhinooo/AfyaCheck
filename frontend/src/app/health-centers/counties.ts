@@ -1,4 +1,4 @@
-// Approximate centroids of Kenya's 47 counties — the search origin fallback when the user
+// Approximate centroids of Kenya's 47 counties: the search origin fallback when the user
 // denies (or the device lacks) geolocation. Precision only needs to be good enough to
 // anchor a 10km-radius health-center search near the county's population center.
 export interface County {

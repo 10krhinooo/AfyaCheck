@@ -12,7 +12,7 @@ export function storeQuestionnaireResult(result: QuestionnaireEndResponse) {
   sessionStorage.setItem(LAST_SESSION_KEY, result.sessionId)
 }
 
-// ResultsPage's sessionId normally arrives via router state, which a refresh loses —
+// ResultsPage's sessionId normally arrives via router state, which a refresh loses,
 // this lets a reloaded /app/results still find the assessment from this browser session.
 export function readLastSessionId(): string | null {
   return sessionStorage.getItem(LAST_SESSION_KEY)

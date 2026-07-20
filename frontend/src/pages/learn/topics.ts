@@ -25,7 +25,7 @@ export const topics: Topic[] = [
       {
         heading: 'What is an STI?',
         paragraphs: [
-          'A sexually transmitted infection (STI) is an infection passed from one person to another mainly through sexual contact — vaginal, anal, or oral. Anyone who is sexually active can get one, regardless of age, gender, or how many partners they have had.',
+          'A sexually transmitted infection (STI) is an infection passed from one person to another mainly through sexual contact: vaginal, anal, or oral. Anyone who is sexually active can get one, regardless of age, gender, or how many partners they have had.',
           'Common STIs in Kenya include chlamydia, gonorrhoea, syphilis, trichomoniasis, genital herpes, human papillomavirus (HPV), and HIV.',
         ],
       },
@@ -42,15 +42,15 @@ export const topics: Topic[] = [
           'Many people avoid testing out of fear, but the news is better than most expect.',
         ],
         bullets: [
-          'Fully curable with medicine: chlamydia, gonorrhoea, syphilis, and trichomoniasis are cured with a course of antibiotics — usually a single visit.',
+          'Fully curable with medicine: chlamydia, gonorrhoea, syphilis, and trichomoniasis are cured with a course of antibiotics, usually a single visit.',
           'Manageable for a normal, healthy life: herpes and HIV cannot yet be cured, but daily treatment keeps them controlled. A person on effective HIV treatment can live a full life and cannot pass HIV to partners once the virus is undetectable.',
-          'Preventable by vaccine: HPV, the virus behind most cervical cancer, is vaccine-preventable — the vaccine is offered free to girls aged 10–14 in Kenya.',
+          'Preventable by vaccine: HPV, the virus behind most cervical cancer, is vaccine-preventable, and the vaccine is offered free to girls aged 10 to 14 in Kenya.',
         ],
       },
       {
         heading: 'Untreated STIs cause real harm',
         paragraphs: [
-          'Left untreated, STIs can cause infertility in both women and men, pregnancy complications, chronic pelvic pain, and a higher chance of getting or passing HIV. Early treatment prevents all of this — which is why regular testing matters even when you feel fine.',
+          'Left untreated, STIs can cause infertility in both women and men, pregnancy complications, chronic pelvic pain, and a higher chance of getting or passing HIV. Early treatment prevents all of this, which is why regular testing matters even when you feel fine.',
         ],
       },
     ],
@@ -67,22 +67,22 @@ export const topics: Topic[] = [
         ],
       },
       {
-        heading: 'PrEP — medicine before exposure',
+        heading: 'PrEP: medicine before exposure',
         paragraphs: [
           'Pre-exposure prophylaxis (PrEP) is a daily pill taken by someone who is HIV-negative to prevent infection. Taken as prescribed, it reduces the risk of getting HIV from sex by about 99%. PrEP is available free at many public and partner facilities in Kenya.',
           'PrEP is worth discussing with a provider if your partner is living with HIV, you have partners whose status you don’t know, or condoms are not always used.',
         ],
       },
       {
-        heading: 'PEP — emergency medicine after exposure',
+        heading: 'PEP: emergency medicine after exposure',
         paragraphs: [
-          'Post-exposure prophylaxis (PEP) is a 28-day course of medicine started within 72 hours of a possible exposure — the sooner the better. If a condom broke, or you had unprotected sex with someone whose status you don’t know, go to a health facility immediately. After 72 hours PEP no longer works.',
+          'Post-exposure prophylaxis (PEP) is a 28-day course of medicine started within 72 hours of a possible exposure, the sooner the better. If a condom broke, or you had unprotected sex with someone whose status you don’t know, go to a health facility immediately. After 72 hours PEP no longer works.',
         ],
       },
       {
         heading: 'Treatment as prevention (U=U)',
         paragraphs: [
-          'A person living with HIV who takes treatment daily can reach an undetectable viral load — so little virus in the body that tests can’t find it. Someone who is undetectable cannot transmit HIV through sex. This is often written as U=U: Undetectable = Untransmittable.',
+          'A person living with HIV who takes treatment daily can reach an undetectable viral load: so little virus in the body that tests can’t find it. Someone who is undetectable cannot transmit HIV through sex. This is often written as U=U: Undetectable = Untransmittable.',
           'This is why knowing your status helps protect the people you care about: treatment protects both your health and your partners.',
         ],
       },
@@ -105,13 +105,13 @@ export const topics: Topic[] = [
       {
         heading: 'When should you test?',
         paragraphs: [
-          'Test at least once a year if you are sexually active — more often (every 3–6 months) if you have new or multiple partners, a partner living with HIV, or don’t always use condoms. Also test at the start of a new relationship, during pregnancy, and any time you have symptoms or a partner tells you they tested positive for an STI.',
+          'Test at least once a year if you are sexually active, more often (every 3 to 6 months) if you have new or multiple partners, a partner living with HIV, or don’t always use condoms. Also test at the start of a new relationship, during pregnancy, and any time you have symptoms or a partner tells you they tested positive for an STI.',
         ],
       },
       {
         heading: 'The window period',
         paragraphs: [
-          'After an exposure, there is a short period before a test can detect the infection — for the rapid HIV tests used in Kenya this is usually up to about 6 weeks. A negative test taken too soon can be falsely reassuring. If a recent exposure worries you, test now and again after the window period has passed.',
+          'After an exposure, there is a short period before a test can detect the infection: for the rapid HIV tests used in Kenya this is usually up to about 6 weeks. A negative test taken too soon can be falsely reassuring. If a recent exposure worries you, test now and again after the window period has passed.',
         ],
       },
       {
@@ -124,7 +124,7 @@ export const topics: Topic[] = [
       {
         heading: 'If the result is positive',
         paragraphs: [
-          'A positive result is the beginning of treatment, not the end of anything. Curable STIs are treated on the spot. For HIV, treatment starts immediately, is free, and works — people who start treatment early live as long as anyone else. Your result is confidential, and clinic staff will help you think through talking to partners.',
+          'A positive result is the beginning of treatment, not the end of anything. Curable STIs are treated on the spot. For HIV, treatment starts immediately, is free, and works: people who start treatment early live as long as anyone else. Your result is confidential, and clinic staff will help you think through talking to partners.',
         ],
       },
     ],

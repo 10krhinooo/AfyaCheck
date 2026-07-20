@@ -16,7 +16,7 @@ export default function HealthCentersPage() {
   const [county, setCounty] = useState('')
   const [stiOnly, setStiOnly] = useState(false)
 
-  // Live Places results have unknown STI-testing status — the filter only excludes centers
+  // Live Places results have unknown STI-testing status: the filter only excludes centers
   // explicitly curated as not offering it.
   const visibleCenters = stiOnly
     ? centers.filter((center) => center.stiTestingAvailable !== false)

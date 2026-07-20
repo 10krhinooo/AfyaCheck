@@ -10,7 +10,7 @@ declare global {
 
 type Status = 'loading' | 'ready' | 'error'
 
-// Lazily loads the Google Maps JS SDK (not part of the route's base bundle budget — see
+// Lazily loads the Google Maps JS SDK (not part of the route's base bundle budget, see
 // budget.json) only once an API key is available. Callers must handle 'error' gracefully:
 // ad blockers, offline/3G timeouts, or a missing key are all expected on this route.
 export function useGoogleMaps(): { status: Status; retry: () => void } {
@@ -34,7 +34,7 @@ export function useGoogleMaps(): { status: Status; retry: () => void } {
         if (cancelled || !apiKey) throw new Error('Maps API key unavailable')
 
         // Google calls this global if the key loads but fails authorization (bad key, missing
-        // HTTP-referrer allowlist entry, Maps JS API not enabled on the project) — a failure
+        // HTTP-referrer allowlist entry, Maps JS API not enabled on the project), a failure
         // mode script.onload/onerror can't see, since the script itself loads successfully.
         window.gm_authFailure = () => {
           if (!cancelled) setStatus('error')

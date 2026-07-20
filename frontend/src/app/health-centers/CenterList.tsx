@@ -3,7 +3,7 @@ import { Badge } from '../../components/Badge'
 import { Card } from '../../components/Card'
 import type { HealthCenter } from './types'
 
-// The default, always-rendered view — accessible, keyboard-operable, and independent of
+// The default, always-rendered view: accessible, keyboard-operable, and independent of
 // whether the map above successfully loaded. Screen reader users and anyone on a blocked/
 // failed Maps JS load rely on this, per the WCAG requirement for this route.
 export function CenterList({ centers }: { centers: HealthCenter[] }) {

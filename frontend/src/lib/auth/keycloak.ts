@@ -2,7 +2,7 @@ import { UserManager, WebStorageStateStore } from 'oidc-client-ts'
 
 // Authorization Code + PKCE against the "afyacheck" realm (see keycloak/realm-export.json).
 // oidc-client-ts generates the PKCE code_verifier/code_challenge automatically for the
-// "afyacheck-spa" public client (no client secret — see docker-compose.yml for local dev).
+// "afyacheck-spa" public client (no client secret, see docker-compose.yml for local dev).
 const issuer = import.meta.env.VITE_KEYCLOAK_ISSUER ?? 'http://localhost:8180/realms/afyacheck'
 const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? 'afyacheck-spa'
 
@@ -32,7 +32,7 @@ export function getUserManager(): UserManager {
 
 // signinRedirect()/signoutRedirect() both fetch Keycloak's OIDC discovery document
 // (issuer/.well-known/...) before navigating the browser away, so a down/unreachable Keycloak
-// rejects the promise instead of leaving the user on a browser-level connection-refused page —
+// rejects the promise instead of leaving the user on a browser-level connection-refused page,
 // callers should catch this.
 export class AuthServiceUnavailableError extends Error {
   constructor() {

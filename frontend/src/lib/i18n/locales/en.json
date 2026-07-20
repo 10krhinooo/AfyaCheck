@@ -40,7 +40,7 @@
     "riskHigh": "High risk",
     "emailLabel": "Email me these results",
     "send": "Send",
-    "sent": "Sent — check your inbox for a copy of your results.",
+    "sent": "Sent. Check your inbox for a copy of your results.",
     "sendError": "We couldn’t send that. Please try again.",
     "yourData": "Your data",
     "yourDataHint": "Download a copy of the answers and results tied to this assessment, or delete them permanently.",
@@ -53,10 +53,10 @@
     "deleted": "Your data has been deleted.",
     "deleteError": "We couldn’t delete your data. Please try again.",
     "history": "Previous assessments",
-    "remindHint": "Want a nudge to test again? We’ll store your email only to send one reminder, then delete it — it’s never linked to your results.",
+    "remindHint": "Want a nudge to test again? We’ll store your email only to send one reminder, then delete it. It’s never linked to your results.",
     "remindLabel": "Remind me to retest in 3 months",
     "remindCta": "Remind me",
-    "remindScheduled": "Done — we’ll send you one reminder in about 3 months.",
+    "remindScheduled": "Done. We’ll send you one reminder in about 3 months.",
     "remindError": "We couldn’t schedule that. Please try again."
   }
 }

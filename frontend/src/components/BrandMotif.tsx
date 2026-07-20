@@ -10,7 +10,7 @@ const sizes = {
 } as const
 
 // Reusable decorative motif: soft teal gradient blobs with icon glyphs, standing in for
-// photography we deliberately don't use (privacy-first brand, no third-party image sourcing —
+// photography we deliberately don't use (privacy-first brand, no third-party image sourcing,
 // see index.css's self-hosted-fonts stance). Reused across Landing's hero, Dashboard, and the
 // About/FAQ pages instead of one-off art per page.
 export function BrandMotif({

@@ -33,7 +33,7 @@ const palette = [
 ]
 
 // Canvas-rendered charts are invisible to screen readers by default (WCAG requirement for
-// this route) — every chart here ships a paired, always-in-the-DOM data table that a sighted
+// this route), every chart here ships a paired, always-in-the-DOM data table that a sighted
 // user can toggle to and a screen reader user can reach directly, with the same numbers.
 export function ChartWithTable({
   title,
@@ -75,7 +75,7 @@ export function ChartWithTable({
       <div className="mt-4">
         {showTable ? (
           <table id={tableId} className="w-full text-left text-sm">
-            <caption className="sr-only">{title} — data table</caption>
+            <caption className="sr-only">{title}: data table</caption>
             <thead>
               <tr className="border-b border-teal-100 text-ink-soft">
                 <th scope="col" className="py-2">

@@ -7,7 +7,7 @@ export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]
 
 const STORAGE_KEY = 'afyacheck-lang'
 
-// Nested string dictionaries, e.g. { nav: { home: "Home" } } — dot-path lookup below.
+// Nested string dictionaries, e.g. { nav: { home: "Home" } }, dot-path lookup below.
 type Dictionary = { [key: string]: string | Dictionary }
 const resources: Record<SupportedLanguage, Dictionary> = { en, sw }
 
@@ -34,7 +34,7 @@ const I18nContext = createContext<I18nState>({
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<SupportedLanguage>('en')
 
-  // Client-only, like AuthContext's getUserManager() call — never runs during
+  // Client-only, like AuthContext's getUserManager() call, never runs during
   // vite-react-ssg's build-time prerender, which has no window/localStorage.
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY)

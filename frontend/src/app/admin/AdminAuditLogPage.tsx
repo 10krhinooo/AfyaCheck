@@ -10,7 +10,7 @@ import type { AuditLogResponse } from './types'
 const LOAD_ERROR = 'We couldn’t load the audit log. Check your connection and try again.'
 
 // Access-denied entries (non-admins probing /api/admin/**, see AuditingAccessDeniedHandler)
-// are the one action type worth calling out visually — everything else is routine admin
+// are the one action type worth calling out visually, everything else is routine admin
 // activity, this is the one that might mean something's wrong.
 function actionTone(action: string): 'high' | 'neutral' {
   return action === 'ACCESS_DENIED' ? 'high' : 'neutral'
@@ -97,9 +97,9 @@ export default function AdminAuditLogPage() {
                       <Badge tone={actionTone(entry.action)}>{entry.action}</Badge>
                     </td>
                     <td className="py-2 text-ink-soft">
-                      {entry.targetType && entry.targetId ? `${entry.targetType} ${entry.targetId}` : '—'}
+                      {entry.targetType && entry.targetId ? `${entry.targetType} ${entry.targetId}` : 'None'}
                     </td>
-                    <td className="py-2 text-ink-soft">{entry.details ?? '—'}</td>
+                    <td className="py-2 text-ink-soft">{entry.details ?? 'None'}</td>
                   </tr>
                 ))}
               </tbody>

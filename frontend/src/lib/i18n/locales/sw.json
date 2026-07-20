@@ -40,7 +40,7 @@
     "riskHigh": "Hatari kubwa",
     "emailLabel": "Nitumie matokeo haya kwa barua pepe",
     "send": "Tuma",
-    "sent": "Imetumwa — angalia barua pepe yako kwa nakala ya matokeo yako.",
+    "sent": "Imetumwa. Angalia barua pepe yako kwa nakala ya matokeo yako.",
     "sendError": "Hatukuweza kutuma. Tafadhali jaribu tena.",
     "yourData": "Data yako",
     "yourDataHint": "Pakua nakala ya majibu na matokeo ya tathmini hii, au yafute kabisa.",
@@ -53,10 +53,10 @@
     "deleted": "Data yako imefutwa.",
     "deleteError": "Hatukuweza kufuta data yako. Tafadhali jaribu tena.",
     "history": "Tathmini zilizopita",
-    "remindHint": "Ungependa kukumbushwa kupima tena? Tutahifadhi barua pepe yako kwa ajili ya ukumbusho mmoja tu, kisha tutaifuta — haitahusishwa kamwe na matokeo yako.",
+    "remindHint": "Ungependa kukumbushwa kupima tena? Tutahifadhi barua pepe yako kwa ajili ya ukumbusho mmoja tu, kisha tutaifuta. Haitahusishwa kamwe na matokeo yako.",
     "remindLabel": "Nikumbushe kupima tena baada ya miezi 3",
     "remindCta": "Nikumbushe",
-    "remindScheduled": "Imekamilika — tutakutumia ukumbusho mmoja baada ya takriban miezi 3.",
+    "remindScheduled": "Imekamilika. Tutakutumia ukumbusho mmoja baada ya takriban miezi 3.",
     "remindError": "Hatukuweza kupanga hilo. Tafadhali jaribu tena."
   },
   "options": {

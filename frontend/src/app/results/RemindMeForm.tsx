@@ -6,7 +6,7 @@ import { apiPost } from '../../lib/api-client'
 import { useTranslation } from '../../lib/i18n'
 
 // Opt-in retest reminder. The backend stores the email + send date only (no link to this
-// assessment) and deletes it after the one reminder is sent — the hint copy says so.
+// assessment) and deletes it after the one reminder is sent, the hint copy says so.
 export function RemindMeForm() {
   const { t } = useTranslation()
   const [email, setEmail] = useState('')

@@ -12,7 +12,7 @@ export default function Learn() {
         <BrandMotif size="sm" className="mb-6" />
         <h1 className="font-display text-3xl text-ink sm:text-4xl">Learn about sexual health</h1>
         <p className="mx-auto mt-3 max-w-xl text-ink-soft">
-          Clear, judgment-free answers about STIs, HIV prevention, and testing — so decisions about your
+          Clear, judgment-free answers about STIs, HIV prevention, and testing, so decisions about your
           health start from facts, not fear.
         </p>
       </Reveal>

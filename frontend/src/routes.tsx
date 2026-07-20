@@ -14,7 +14,7 @@ import NotFound from './pages/not-found/NotFound'
 // (see vite.config.ts ssgOptions.includedRoutes) since they carry real SEO value, unlike the
 // auth-walled/session-personalized /app/** SPA routes below.
 //
-// NavBar/Footer are mounted once in Layout.tsx, so every route here shares identical chrome —
+// NavBar/Footer are mounted once in Layout.tsx, so every route here shares identical chrome,
 // no per-route shell wrapper needed (AppShell was removed once the header stopped being
 // /app/**-specific).
 //
@@ -48,7 +48,7 @@ export const routes: RouteRecord[] = [
         lazy: async () => ({ Component: (await import('./app/health-centers/HealthCentersPage')).default }),
       },
       // Chart.js is desktop/broadband-only weight (admin console, per the migration plan's
-      // bundle budget) — lazy-loaded so public/mobile users never pay for it. Auth is
+      // bundle budget), lazy-loaded so public/mobile users never pay for it. Auth is
       // enforced inside each *.lazy.tsx entry via RequireAuth (route.lazy can't combine with
       // route.element, so the guard has to live in the lazily-loaded module itself). Dashboard
       // follows the same *.lazy.tsx pattern for consistency, even though its guard is simpler.
