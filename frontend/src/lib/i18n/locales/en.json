@@ -23,7 +23,9 @@
     "tryAgain": "Try again",
     "startError": "We couldn’t load your assessment. Check your connection and try again.",
     "submitError": "We couldn’t save your answer. Check your connection and try again.",
-    "backError": "We couldn’t go back to the previous question. Check your connection and try again."
+    "backError": "We couldn’t go back to the previous question. Check your connection and try again.",
+    "consentDeniedTitle": "No assessment was run",
+    "consentDeniedCta": "Return home"
   },
   "results": {
     "loading": "Loading your results…",
@@ -44,6 +46,7 @@
     "sendError": "We couldn’t send that. Please try again.",
     "yourData": "Your data",
     "yourDataHint": "Download a copy of the answers and results tied to this assessment, or delete them permanently.",
+    "downloadPdf": "Download as PDF",
     "download": "Download my data",
     "downloadError": "We couldn’t download your data. Please try again.",
     "delete": "Delete my data",

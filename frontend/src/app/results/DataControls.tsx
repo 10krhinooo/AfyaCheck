@@ -3,14 +3,22 @@ import { Button } from '../../components/Button'
 import { StatusMessage } from '../../components/StatusMessage'
 import { apiDelete, apiFetch } from '../../lib/api-client'
 import { useTranslation } from '../../lib/i18n'
+import type { RiskAssessmentDto } from '../../lib/results-types'
 import { clearStoredResult } from './resultStorage'
 
-export function DataControls({ sessionId }: { sessionId: string }) {
+export function DataControls({
+  sessionId,
+  assessment,
+}: {
+  sessionId: string
+  assessment: RiskAssessmentDto
+}) {
   const { t } = useTranslation()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleted, setDeleted] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function downloadData() {
@@ -29,6 +37,19 @@ export function DataControls({ sessionId }: { sessionId: string }) {
       setError(err instanceof Error ? err.message : t('results.downloadError'))
     } finally {
       setDownloading(false)
+    }
+  }
+
+  async function downloadPdf() {
+    setDownloadingPdf(true)
+    setError(null)
+    try {
+      const { downloadResultsPdf } = await import('./generateResultsPdf')
+      await downloadResultsPdf(assessment, sessionId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('results.downloadError'))
+    } finally {
+      setDownloadingPdf(false)
     }
   }
 
@@ -62,6 +83,10 @@ export function DataControls({ sessionId }: { sessionId: string }) {
       )}
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <Button variant="secondary" onClick={downloadPdf} loading={downloadingPdf}>
+          {t('results.downloadPdf')}
+        </Button>
+
         <Button variant="secondary" onClick={downloadData} loading={downloading}>
           {t('results.download')}
         </Button>

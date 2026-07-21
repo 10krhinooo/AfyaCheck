@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '../../components/Button'
+import { Button, LinkButton } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { ProgressBar } from '../../components/ProgressBar'
 import { Skeleton } from '../../components/Skeleton'
@@ -24,8 +24,11 @@ export default function QuestionnairePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refocus only on question change, not every render
   }, [question?.key])
 
+  // A consent-denied end has no risk assessment behind it (the survey stopped before any
+  // question that feeds the model was asked), so there's nothing for /app/results to load.
+  // Show the decline message here instead of navigating to a page that would just error.
   useEffect(() => {
-    if (result) {
+    if (result && !result.consentDenied) {
       storeQuestionnaireResult(result)
       navigate('/app/results', { state: { sessionId: result.sessionId } })
     }
@@ -55,6 +58,20 @@ export default function QuestionnairePage() {
           <Button variant="secondary" className="mt-6" onClick={retry}>
             {t('questionnaire.tryAgain')}
           </Button>
+        </div>
+      </main>
+    )
+  }
+
+  if (result?.consentDenied) {
+    return (
+      <main className="mx-auto max-w-xl px-6 py-16 text-center">
+        <h1 className="text-2xl text-ink">{t('questionnaire.consentDeniedTitle')}</h1>
+        <p className="mt-2 text-ink-soft">{result.endMessage}</p>
+        <div className="mt-6">
+          <LinkButton href="/" variant="primary">
+            {t('questionnaire.consentDeniedCta')}
+          </LinkButton>
         </div>
       </main>
     )

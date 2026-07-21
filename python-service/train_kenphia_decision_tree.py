@@ -103,7 +103,7 @@ def get_questions_data():
         {"id": 2, "display_order": 2, "question_key": "age", "question_text": "What is your age?", "question_type": "number", "section_title": "Consent and Demographics"},
         {"id": 3, "display_order": 3, "question_key": "gender", "question_text": "What is your gender?", "question_type": "multiple_choice", "section_title": "Consent and Demographics"},
         {"id": 4, "display_order": 4, "question_key": "sexual_activity", "question_text": "Are you currently sexually active?", "question_type": "yes_no", "section_title": "Sexual History"},
-        {"id": 5, "display_order": 5, "question_key": "recent_partners", "question_text": "How many sexual partners have you had in the past 3 months?", "question_type": "number", "section_title": "Sexual History"},
+        {"id": 5, "display_order": 5, "question_key": "recent_partners", "question_text": "How many sexual partners have you had in the past 12 months?", "question_type": "number", "section_title": "Sexual History"},
         {"id": 6, "display_order": 6, "question_key": "condom_use", "question_text": "How often do you use condoms or other barrier methods?", "question_type": "multiple_choice", "section_title": "Sexual History"},
         {"id": 7, "display_order": 7, "question_key": "high_risk_partner", "question_text": "Have you had sexual contact with a partner who you know has an STI or engages in high-risk behaviors?", "question_type": "yes_no", "section_title": "Sexual History"},
         {"id": 8, "display_order": 8, "question_key": "transactional_sex", "question_text": "Have you ever exchanged sex for money, drugs, or other resources?", "question_type": "yes_no", "section_title": "Sexual History"},
@@ -142,7 +142,7 @@ def get_questions_data():
         {"id": 41, "display_order": 41, "question_key": "marital_status", "question_text": "What is your current marital status?", "question_type": "multiple_choice", "section_title": "Demographics", "options": ["Single", "Married", "Divorced", "Widowed", "Separated", "Living with partner"]},
         {"id": 42, "display_order": 42, "question_key": "education", "question_text": "What is your highest level of education?", "question_type": "multiple_choice", "section_title": "Demographics", "options": ["No formal education", "Primary school", "Secondary school", "High school", "College/University", "Postgraduate"]},
         {"id": 43, "display_order": 43, "question_key": "wealth_index", "question_text": "How would you describe your household's economic situation?", "question_type": "multiple_choice", "section_title": "Demographics", "options": ["Low income", "Lower middle income", "Middle income", "Upper middle income", "High income"]},
-        {"id": 44, "display_order": 44, "question_key": "sexual_partners", "question_text": "How many sexual partners have you had in the past 12 months?", "question_type": "number", "section_title": "Sexual History", "min_value": 0, "max_value": 50},
+        {"id": 44, "display_order": 44, "question_key": "sexual_partners", "question_text": "How many sexual partners have you had in your lifetime?", "question_type": "number", "section_title": "Sexual History", "min_value": 0, "max_value": 50},
     ]
     return pd.DataFrame(questions_data)
 

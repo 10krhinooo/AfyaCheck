@@ -1,0 +1,10 @@
+# spring-dotenv (me.paulschwarz:spring-dotenv) doesn't ship its own spring.factories/.imports
+# entry, so it only loads .env when something explicitly registers DotenvApplicationInitializer.
+# AfyacheckApplication.main() used to do that manually via SpringApplicationBuilder, but
+# @SpringBootTest builds its SpringApplication independently of main() and never picked it up,
+# so every test silently ran without .env loaded (DB_PASSWORD, KEYCLOAK_BACKEND_CLIENT_SECRET,
+# etc. resolved to blank/unresolved instead of their real values). Registering it here via the
+# classic SpringFactoriesLoader SPI makes SpringApplication.run() (main()) and Boot Test's
+# SpringBootContextLoader (@SpringBootTest) both pick it up the same way.
+org.springframework.context.ApplicationContextInitializer=\
+me.paulschwarz.springdotenv.spring.DotenvApplicationInitializer

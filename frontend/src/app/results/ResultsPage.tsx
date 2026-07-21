@@ -164,7 +164,7 @@ export default function ResultsPage() {
 
       {sessionId && (
         <Card className="mt-6 p-8">
-          <DataControls sessionId={sessionId} />
+          <DataControls sessionId={sessionId} assessment={assessment} />
         </Card>
       )}
 

@@ -86,6 +86,20 @@ class SessionServiceTest {
     }
 
     @Test
+    void createOrGetSessionReopensCompletedSessionForRetake() {
+        Session existing = validSession("sid-1");
+        existing.setStatus("completed");
+        when(sessionRepository.findBySessionId("sid-1")).thenReturn(Optional.of(existing));
+
+        String result = sessionService.createOrGetSession("sid-1");
+
+        assertThat(result).isEqualTo("sid-1");
+        assertThat(existing.getStatus()).isEqualTo("active");
+        verify(answerRepository).deleteBySession(existing);
+        verify(sessionRepository).saveAndFlush(existing);
+    }
+
+    @Test
     void createOrGetSessionCreatesNewWhenMissing() {
         when(sessionRepository.findBySessionId("sid-2")).thenReturn(Optional.empty());
         Session saved = validSession("sid-2");

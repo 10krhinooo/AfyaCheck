@@ -107,6 +107,19 @@ public class SessionService {
                     logger.warn("Found invalid session state, recreating: {}", safeSessionId);
                     return createNewSession(safeSessionId).getSessionId();
                 }
+                // The questionnaire session is 1:1 with the browser's HttpSession (cookie) for
+                // its whole lifetime, so a "completed" session (consent denied, or a finished
+                // assessment) would otherwise resume straight back to that same terminal state
+                // forever, e.g. "Retake assessment" or a second "No" on consent would show the
+                // old end screen instead of asking questions again. Clear its answers and
+                // reopen it for a genuine retake; RiskAssessment rows are untouched, so
+                // /api/results/history still shows prior attempts under this sessionId.
+                if ("completed".equals(session.getStatus())) {
+                    logger.info("Reopening completed session for retake: {}", safeSessionId);
+                    answerRepository.deleteBySession(session);
+                    session.setStatus("active");
+                    sessionRepository.saveAndFlush(session);
+                }
                 logger.info("Found existing session: {}", safeSessionId);
                 return session.getSessionId();
             } else {
