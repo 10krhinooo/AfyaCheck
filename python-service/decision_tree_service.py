@@ -119,17 +119,23 @@ class SmartQuestionnaire:
 
     def _get_question_category(self, question_key):
         """Categorize questions for sequence patterns (matches training logic)"""
-        demographics = ['consent', 'age', 'gender', 'marital_status', 'education', 'wealth_index']
+        demographics = ['consent', 'age', 'gender', 'marital_status', 'education', 'wealth_index',
+                        'residence_type', 'age_first_marriage', 'migration_history']
         sexual_history = ['sexual_activity', 'recent_partners', 'condom_use', 'high_risk_partner',
-                          'transactional_sex', 'multiple_partners', 'sexual_partners']
+                          'transactional_sex', 'multiple_partners', 'sexual_partners',
+                          'age_first_sex', 'partner_age_gap', 'polygamous_relationship',
+                          'paid_for_sex', 'relationship_duration', 'male_circumcision']
         symptoms = ['sti_symptoms', 'discharge_symptom', 'painful_urination', 'genital_sores',
                     'symptom_duration', 'partner_symptoms']
-        testing = ['hiv_tested', 'last_hiv_test', 'other_sti_tests', 'willing_to_test']
+        testing = ['hiv_tested', 'last_hiv_test', 'other_sti_tests', 'willing_to_test',
+                   'sti_test_frequency', 'hiv_test_frequency']
         female_health = ['pregnancy_status', 'contraception_use', 'last_pap_smear']
-        substance = ['substance_sex', 'alcohol_frequency', 'drug_use']
-        relationship = ['sexual_coercion', 'partner_communication', 'partner_testing', 'partner_concurrency']
-        knowledge = ['sti_knowledge', 'prevention_methods', 'hiv_prep', 'health_priorities']
-        healthcare = ['insurance_coverage', 'regular_provider', 'cost_barrier', 'preferred_testing', 'testing_barriers']
+        substance = ['substance_sex', 'alcohol_frequency', 'drug_use', 'tobacco_use', 'needle_sharing']
+        relationship = ['sexual_coercion', 'partner_communication', 'partner_testing', 'partner_concurrency',
+                        'intimate_partner_violence']
+        knowledge = ['sti_knowledge', 'prevention_methods', 'hiv_prep', 'health_priorities', 'hiv_knowledge_myths']
+        healthcare = ['insurance_coverage', 'regular_provider', 'cost_barrier', 'preferred_testing',
+                     'testing_barriers', 'tb_history', 'blood_transfusion_history']
 
         if question_key in demographics: return 'demographics'
         elif question_key in sexual_history: return 'sexual_history'
@@ -199,6 +205,15 @@ class SmartQuestionnaire:
             except:
                 return 0.0
 
+        if question in ['age_first_sex', 'age_first_marriage']:
+            try:
+                value = float(answer)
+                # Earlier debut/marriage is a well-documented HIV/STI risk factor, so
+                # encode it inversely: younger age -> higher value (matches training).
+                return max(0.0, min(1.0, (25.0 - value) / 17.0))
+            except:
+                return 0.0
+
         # Boolean-like questions
         yes_no_questions = [
             'sexual_activity', 'high_risk_partner', 'transactional_sex', 'discharge_symptom',
@@ -206,7 +221,9 @@ class SmartQuestionnaire:
             'hiv_tested', 'other_sti_tests', 'willing_to_test', 'pregnancy_status', 'substance_sex',
             'drug_use', 'sexual_coercion', 'partner_communication', 'partner_symptoms',
             'multiple_partners', 'partner_concurrency', 'hiv_prep', 'insurance_coverage',
-            'regular_provider', 'cost_barrier'
+            'regular_provider', 'cost_barrier', 'male_circumcision', 'needle_sharing',
+            'blood_transfusion_history', 'tb_history', 'migration_history',
+            'intimate_partner_violence', 'tobacco_use', 'polygamous_relationship', 'paid_for_sex'
         ]
         if question in yes_no_questions:
             return 1.0 if answer_str in ['yes', 'y', 'true', '1'] else 0.0
@@ -240,6 +257,20 @@ class SmartQuestionnaire:
         elif question == 'last_pap_smear':
             levels = {'never': 0.0, 'more than 3 years ago': 0.3, '1-3 years ago': 0.7, 'within the last year': 1.0}
             return levels.get(answer_str, 0.5)
+        elif question == 'residence_type':
+            return {'urban': 1.0, 'rural': 0.0}.get(answer_str, 0.5)
+        elif question == 'partner_age_gap':
+            levels = {'same age or younger': 0.0, '1-5 years older': 0.33, '6-9 years older': 0.66, '10+ years older': 1.0}
+            return levels.get(answer_str, 0.5)
+        elif question in ['sti_test_frequency', 'hiv_test_frequency']:
+            levels = {'never': 0.0, 'once': 0.3, 'yearly': 0.6, 'more than once a year': 1.0}
+            return levels.get(answer_str, 0.5)
+        elif question == 'hiv_knowledge_myths':
+            levels = {'low knowledge': 0.0, 'some misconceptions': 0.5, 'high comprehensive knowledge': 1.0}
+            return levels.get(answer_str, 0.5)
+        elif question == 'relationship_duration':
+            levels = {'less than 6 months': 0.0, '6-12 months': 0.33, '1-3 years': 0.66, '3+ years': 1.0}
+            return levels.get(answer_str, 0.5)
 
         # Encoding for categories (needed for sequence features)
         elif question == 'category':
@@ -260,7 +291,10 @@ class SmartQuestionnaire:
             'sti_knowledge', 'prevention_methods', 'hiv_prep', 'health_priorities',
             'insurance_coverage', 'regular_provider', 'cost_barrier', 'preferred_testing',
             'testing_barriers', 'alcohol_frequency', 'drug_use', 'hiv_tested',
-            'other_sti_tests', 'willing_to_test'
+            'other_sti_tests', 'willing_to_test', 'residence_type', 'sti_test_frequency',
+            'blood_transfusion_history', 'hiv_knowledge_myths', 'tb_history',
+            'migration_history', 'intimate_partner_violence', 'tobacco_use',
+            'hiv_test_frequency', 'needle_sharing'
         ]
 
         if question_key in always_relevant:
@@ -270,12 +304,20 @@ class SmartQuestionnaire:
         if question_key in ['pregnancy_status', 'contraception_use', 'last_pap_smear']:
             return answers.get('gender') in ['Female', 'female']
 
+        if question_key == 'male_circumcision':
+            return answers.get('gender') in ['Male', 'male']
+        if question_key == 'age_first_marriage':
+            return answers.get('marital_status') not in (None, 'Single')
+        if question_key == 'polygamous_relationship':
+            return answers.get('marital_status') == 'Married'
+
         sexual_activity_dependent = [
             'recent_partners', 'condom_use', 'high_risk_partner', 'transactional_sex',
             'multiple_partners', 'sexual_partners', 'sti_symptoms', 'discharge_symptom',
             'painful_urination', 'genital_sores', 'previous_sti', 'sti_treatment',
             'symptom_duration', 'partner_symptoms', 'substance_sex', 'sexual_coercion',
-            'partner_communication', 'partner_testing', 'partner_concurrency'
+            'partner_communication', 'partner_testing', 'partner_concurrency',
+            'age_first_sex', 'partner_age_gap', 'paid_for_sex', 'relationship_duration'
         ]
 
         if question_key in sexual_activity_dependent:
@@ -350,6 +392,8 @@ class SmartQuestionnaire:
             ('marital_status', lambda: 'consent' in answered_set and answers.get('consent') == 'Yes'),
             ('education', lambda: 'consent' in answered_set and answers.get('consent') == 'Yes'),
             ('wealth_index', lambda: 'consent' in answered_set and answers.get('consent') == 'Yes'),
+            ('residence_type', lambda: 'consent' in answered_set and answers.get('consent') == 'Yes'),
+            ('age_first_marriage', lambda: answers.get('marital_status') not in (None, 'Single')),
 
             # --- PHASE 2: ACTIVITY GATEKEEPER ---
             ('sexual_activity', lambda: 'age' in answered_set and answers.get('age') and str(answers.get('age')).replace('.', '', 1).isdigit() and int(float(answers.get('age'))) >= 13),
@@ -357,7 +401,9 @@ class SmartQuestionnaire:
             # *** PHASE 3: UNIVERSAL RISK (TESTING) - ABSOLUTE PRIORITY ***
             ('hiv_tested', lambda: True),
             ('last_hiv_test', lambda: answers.get('hiv_tested') == 'Yes'),
+            ('hiv_test_frequency', lambda: True),
             ('other_sti_tests', lambda: True),
+            ('sti_test_frequency', lambda: True),
             ('willing_to_test', lambda: True),
             # ***************************************************************
 
@@ -371,16 +417,25 @@ class SmartQuestionnaire:
             # -----------------------------------------------------------
 
             # --- PHASE 5: DETAILED SEXUAL HISTORY ---
+            ('age_first_sex', lambda: answers.get('sexual_activity') == 'Yes'),
             ('sexual_partners', lambda: answers.get('sexual_activity') == 'Yes'),
             ('recent_partners', lambda: answers.get('sexual_activity') == 'Yes'),
+            ('relationship_duration', lambda: answers.get('sexual_activity') == 'Yes'),
+            ('partner_age_gap', lambda: answers.get('sexual_activity') == 'Yes'),
             ('condom_use', lambda: answers.get('sexual_activity') == 'Yes'),
             ('high_risk_partner', lambda: answers.get('sexual_activity') == 'Yes'),
             ('transactional_sex', lambda: answers.get('sexual_activity') == 'Yes'),
+            ('paid_for_sex', lambda: answers.get('sexual_activity') == 'Yes'),
             ('multiple_partners', lambda: answers.get('sexual_activity') == 'Yes'),
+            ('polygamous_relationship', lambda: answers.get('marital_status') == 'Married'),
+            ('male_circumcision', lambda: answers.get('gender') in ['Male', 'male']),
 
             # --- PHASE 6: STI HISTORY ---
             ('previous_sti', lambda: answers.get('sexual_activity') == 'Yes'),
             ('sti_treatment', lambda: answers.get('previous_sti') == 'Yes'),
+            ('tb_history', lambda: True),
+            ('blood_transfusion_history', lambda: True),
+            ('needle_sharing', lambda: True),
 
             # --- PHASE 7: FEMALE HEALTH ---
             ('pregnancy_status', lambda: answers.get('gender') in ['Female', 'female'] and answers.get('sexual_activity') == 'Yes'),
@@ -390,16 +445,20 @@ class SmartQuestionnaire:
             # --- PHASE 8: SUBSTANCE USE ---
             ('alcohol_frequency', lambda: True),
             ('drug_use', lambda: True),
+            ('tobacco_use', lambda: True),
             ('substance_sex', lambda: answers.get('sexual_activity') == 'Yes'),
 
             # --- PHASE 9: RELATIONSHIP/SAFETY ---
             ('sexual_coercion', lambda: answers.get('sexual_activity') == 'Yes'),
+            ('intimate_partner_violence', lambda: True),
             ('partner_communication', lambda: answers.get('sexual_activity') == 'Yes'),
             ('partner_testing', lambda: answers.get('sexual_activity') == 'Yes'),
             ('partner_concurrency', lambda: answers.get('sexual_activity') == 'Yes'),
+            ('migration_history', lambda: True),
 
             # --- PHASE 10: KNOWLEDGE AND ACCESS ---
             ('sti_knowledge', lambda: True),
+            ('hiv_knowledge_myths', lambda: True),
             ('prevention_methods', lambda: True),
             ('hiv_prep', lambda: True),
             ('health_priorities', lambda: True),
@@ -456,7 +515,8 @@ class SmartQuestionnaire:
             'transactional_sex', 'multiple_partners', 'sti_symptoms', 'discharge_symptom',
             'painful_urination', 'genital_sores', 'previous_sti', 'sti_treatment',
             'partner_concurrency', 'partner_symptoms', 'substance_sex', 'sexual_coercion',
-            'partner_communication', 'partner_testing', 'symptom_duration'
+            'partner_communication', 'partner_testing', 'symptom_duration',
+            'age_first_sex', 'partner_age_gap', 'paid_for_sex', 'relationship_duration'
         ]
         # -----------------------------------------------------------
 

@@ -169,6 +169,10 @@ public class MLService {
             score += 10;
         }
 
+        // Additional well-documented risk factors, kept in sync with DecisionService's fallback.
+        if ("Yes".equals(answers.get("needle_sharing"))) score += 20;
+        if ("No".equals(answers.get("male_circumcision"))) score += 5;
+
         return Math.min(score, 100);
     }
 

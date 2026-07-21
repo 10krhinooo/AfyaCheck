@@ -6,8 +6,13 @@ random distributions -- no real survey data at all).
 
 Architecture is otherwise UNCHANGED from create_comprehensive_model.py on
 purpose, so this is a drop-in replacement for decision_tree_service.py with
-zero service-code changes required:
-  - Same 44 question keys / questions_df schema.
+zero service-code changes required (decision_tree_service.py's own copies of
+the flow/encoding/relevance logic below were updated in lockstep -- see that
+file):
+  - Question bank expanded from 44 to 61 keys (see get_questions_data(); the
+    17 added keys are grounded where a real KENPHIA column exists --
+    CANDIDATE_NEW_USECOLS -- and fall back to synthetic generation otherwise,
+    same pattern as the original 44).
   - Same feature engineering (create_enhanced_feature_vector, encode_answer,
     get_question_category, etc.) -- copied verbatim.
   - Same rule-based `get_smart_next_question` business logic used to label
@@ -143,6 +148,23 @@ def get_questions_data():
         {"id": 42, "display_order": 42, "question_key": "education", "question_text": "What is your highest level of education?", "question_type": "multiple_choice", "section_title": "Demographics", "options": ["No formal education", "Primary school", "Secondary school", "High school", "College/University", "Postgraduate"]},
         {"id": 43, "display_order": 43, "question_key": "wealth_index", "question_text": "How would you describe your household's economic situation?", "question_type": "multiple_choice", "section_title": "Demographics", "options": ["Low income", "Lower middle income", "Middle income", "Upper middle income", "High income"]},
         {"id": 44, "display_order": 44, "question_key": "sexual_partners", "question_text": "How many sexual partners have you had in your lifetime?", "question_type": "number", "section_title": "Sexual History", "min_value": 0, "max_value": 50},
+        {"id": 45, "display_order": 45, "question_key": "residence_type", "question_text": "Do you live in an urban or rural area?", "question_type": "multiple_choice", "section_title": "Personal Info", "options": ["Urban", "Rural"]},
+        {"id": 46, "display_order": 46, "question_key": "age_first_sex", "question_text": "At what age did you first have sexual intercourse?", "question_type": "number", "section_title": "Sexual History", "min_value": 8, "max_value": 60},
+        {"id": 47, "display_order": 47, "question_key": "male_circumcision", "question_text": "Are you circumcised?", "question_type": "yes_no", "section_title": "Medical History"},
+        {"id": 48, "display_order": 48, "question_key": "partner_age_gap", "question_text": "How much older is your most recent partner than you?", "question_type": "multiple_choice", "section_title": "Sexual History", "options": ["Same age or younger", "1-5 years older", "6-9 years older", "10+ years older"]},
+        {"id": 49, "display_order": 49, "question_key": "needle_sharing", "question_text": "Have you ever shared needles or syringes with anyone?", "question_type": "yes_no", "section_title": "Lifestyle"},
+        {"id": 50, "display_order": 50, "question_key": "sti_test_frequency", "question_text": "How often do you get tested for STIs?", "question_type": "multiple_choice", "section_title": "Medical History", "options": ["Never", "Once", "Yearly", "More than once a year"]},
+        {"id": 51, "display_order": 51, "question_key": "blood_transfusion_history", "question_text": "Have you ever received a blood transfusion?", "question_type": "yes_no", "section_title": "Medical History"},
+        {"id": 52, "display_order": 52, "question_key": "hiv_knowledge_myths", "question_text": "How would you rate your knowledge of how HIV is and is not transmitted?", "question_type": "multiple_choice", "section_title": "Education", "options": ["High comprehensive knowledge", "Some misconceptions", "Low knowledge"]},
+        {"id": 53, "display_order": 53, "question_key": "tb_history", "question_text": "Have you ever been diagnosed with or treated for tuberculosis (TB)?", "question_type": "yes_no", "section_title": "Medical History"},
+        {"id": 54, "display_order": 54, "question_key": "migration_history", "question_text": "Have you been away from home for more than one month in the last 12 months?", "question_type": "yes_no", "section_title": "Lifestyle"},
+        {"id": 55, "display_order": 55, "question_key": "intimate_partner_violence", "question_text": "Have you ever experienced physical violence from a partner?", "question_type": "yes_no", "section_title": "Safety"},
+        {"id": 56, "display_order": 56, "question_key": "tobacco_use", "question_text": "Do you currently use tobacco products?", "question_type": "yes_no", "section_title": "Lifestyle"},
+        {"id": 57, "display_order": 57, "question_key": "age_first_marriage", "question_text": "At what age did you first get married or start living with a partner?", "question_type": "number", "section_title": "Personal Info", "min_value": 10, "max_value": 60},
+        {"id": 58, "display_order": 58, "question_key": "polygamous_relationship", "question_text": "Does your spouse have other spouses (co-wives/co-husbands)?", "question_type": "yes_no", "section_title": "Sexual History"},
+        {"id": 59, "display_order": 59, "question_key": "paid_for_sex", "question_text": "Have you ever paid someone in exchange for sex?", "question_type": "yes_no", "section_title": "Sexual History"},
+        {"id": 60, "display_order": 60, "question_key": "hiv_test_frequency", "question_text": "How often do you get tested for HIV?", "question_type": "multiple_choice", "section_title": "HIV Testing", "options": ["Never", "Once", "Yearly", "More than once a year"]},
+        {"id": 61, "display_order": 61, "question_key": "relationship_duration", "question_text": "How long have you been with your current or most recent partner?", "question_type": "multiple_choice", "section_title": "Sexual History", "options": ["Less than 6 months", "6-12 months", "1-3 years", "3+ years"]},
     ]
     return pd.DataFrame(questions_data)
 
@@ -163,13 +185,23 @@ def encode_answer(question, answer):
                 return min(np.log1p(value) / np.log1p(10), 1.0)
         except Exception:
             return 0.0
+    if question in ["age_first_sex", "age_first_marriage"]:
+        try:
+            value = float(answer)
+            # Earlier debut/marriage is a well-documented HIV/STI risk factor, so
+            # encode it inversely: younger age -> higher value.
+            return max(0.0, min(1.0, (25.0 - value) / 17.0))
+        except Exception:
+            return 0.0
     yes_no_questions = [
         "sexual_activity", "high_risk_partner", "transactional_sex", "discharge_symptom",
         "painful_urination", "genital_sores", "sti_symptoms", "previous_sti", "sti_treatment",
         "hiv_tested", "other_sti_tests", "willing_to_test", "pregnancy_status", "substance_sex",
         "drug_use", "sexual_coercion", "partner_communication", "partner_symptoms",
         "multiple_partners", "partner_concurrency", "hiv_prep", "insurance_coverage",
-        "regular_provider", "cost_barrier",
+        "regular_provider", "cost_barrier", "male_circumcision", "needle_sharing",
+        "blood_transfusion_history", "tb_history", "migration_history",
+        "intimate_partner_violence", "tobacco_use", "polygamous_relationship", "paid_for_sex",
     ]
     if question in yes_no_questions:
         return 1.0 if answer_str in ["yes", "y", "true", "1"] else 0.0
@@ -198,6 +230,20 @@ def encode_answer(question, answer):
     elif question == "health_priorities":
         levels = {"not important at all": 0.0, "not very important": 0.3, "somewhat important": 0.7, "very important": 1.0}
         return levels.get(answer_str, 0.5)
+    elif question == "residence_type":
+        return {"urban": 1.0, "rural": 0.0}.get(answer_str, 0.5)
+    elif question == "partner_age_gap":
+        levels = {"same age or younger": 0.0, "1-5 years older": 0.33, "6-9 years older": 0.66, "10+ years older": 1.0}
+        return levels.get(answer_str, 0.5)
+    elif question in ["sti_test_frequency", "hiv_test_frequency"]:
+        levels = {"never": 0.0, "once": 0.3, "yearly": 0.6, "more than once a year": 1.0}
+        return levels.get(answer_str, 0.5)
+    elif question == "hiv_knowledge_myths":
+        levels = {"low knowledge": 0.0, "some misconceptions": 0.5, "high comprehensive knowledge": 1.0}
+        return levels.get(answer_str, 0.5)
+    elif question == "relationship_duration":
+        levels = {"less than 6 months": 0.0, "6-12 months": 0.33, "1-3 years": 0.66, "3+ years": 1.0}
+        return levels.get(answer_str, 0.5)
     return 0.5
 
 
@@ -215,15 +261,15 @@ def calculate_risk_score(answers):
 
 
 def get_question_category(question_key):
-    demographics = ["consent", "age", "gender", "marital_status", "education", "wealth_index"]
-    sexual_history = ["sexual_activity", "recent_partners", "condom_use", "high_risk_partner", "transactional_sex", "multiple_partners", "sexual_partners"]
+    demographics = ["consent", "age", "gender", "marital_status", "education", "wealth_index", "residence_type", "age_first_marriage", "migration_history"]
+    sexual_history = ["sexual_activity", "recent_partners", "condom_use", "high_risk_partner", "transactional_sex", "multiple_partners", "sexual_partners", "age_first_sex", "partner_age_gap", "polygamous_relationship", "paid_for_sex", "relationship_duration", "male_circumcision"]
     symptoms = ["sti_symptoms", "discharge_symptom", "painful_urination", "genital_sores", "symptom_duration", "partner_symptoms"]
-    testing = ["hiv_tested", "last_hiv_test", "other_sti_tests", "willing_to_test"]
+    testing = ["hiv_tested", "last_hiv_test", "other_sti_tests", "willing_to_test", "sti_test_frequency", "hiv_test_frequency"]
     female_health = ["pregnancy_status", "contraception_use", "last_pap_smear"]
-    substance = ["substance_sex", "alcohol_frequency", "drug_use"]
-    relationship = ["sexual_coercion", "partner_communication", "partner_testing", "partner_concurrency"]
-    knowledge = ["sti_knowledge", "prevention_methods", "hiv_prep", "health_priorities"]
-    healthcare = ["insurance_coverage", "regular_provider", "cost_barrier", "preferred_testing", "testing_barriers"]
+    substance = ["substance_sex", "alcohol_frequency", "drug_use", "tobacco_use", "needle_sharing"]
+    relationship = ["sexual_coercion", "partner_communication", "partner_testing", "partner_concurrency", "intimate_partner_violence"]
+    knowledge = ["sti_knowledge", "prevention_methods", "hiv_prep", "health_priorities", "hiv_knowledge_myths"]
+    healthcare = ["insurance_coverage", "regular_provider", "cost_barrier", "preferred_testing", "testing_barriers", "tb_history", "blood_transfusion_history"]
     if question_key in demographics: return "demographics"
     elif question_key in sexual_history: return "sexual_history"
     elif question_key in symptoms: return "symptoms"
@@ -289,18 +335,28 @@ def is_question_relevant(question_key, current_answers):
         "sti_knowledge", "prevention_methods", "hiv_prep", "health_priorities",
         "insurance_coverage", "regular_provider", "cost_barrier", "preferred_testing",
         "testing_barriers", "alcohol_frequency", "drug_use", "hiv_tested",
-        "other_sti_tests", "willing_to_test",
+        "other_sti_tests", "willing_to_test", "residence_type", "sti_test_frequency",
+        "blood_transfusion_history", "hiv_knowledge_myths", "tb_history",
+        "migration_history", "intimate_partner_violence", "tobacco_use",
+        "hiv_test_frequency", "needle_sharing",
     ]
     if question_key in always_relevant:
         return True
     if question_key in ["pregnancy_status", "contraception_use", "last_pap_smear"]:
         return answers.get("gender") in ["Female", "female"]
+    if question_key == "male_circumcision":
+        return answers.get("gender") in ["Male", "male"]
+    if question_key == "age_first_marriage":
+        return answers.get("marital_status") not in (None, "Single")
+    if question_key == "polygamous_relationship":
+        return answers.get("marital_status") == "Married"
     sexual_activity_dependent = [
         "recent_partners", "condom_use", "high_risk_partner", "transactional_sex",
         "multiple_partners", "sexual_partners", "sti_symptoms", "discharge_symptom",
         "painful_urination", "genital_sores", "previous_sti", "sti_treatment",
         "symptom_duration", "partner_symptoms", "substance_sex", "sexual_coercion",
         "partner_communication", "partner_testing", "partner_concurrency",
+        "age_first_sex", "partner_age_gap", "paid_for_sex", "relationship_duration",
     ]
     if question_key in sexual_activity_dependent:
         return answers.get("sexual_activity") == "Yes"
@@ -322,16 +378,26 @@ def get_smart_next_question(current_answers, available_questions, questions_df):
         ("marital_status", lambda: "consent" in answered_set and answers.get("consent") == "Yes"),
         ("education", lambda: "consent" in answered_set and answers.get("consent") == "Yes"),
         ("wealth_index", lambda: "consent" in answered_set and answers.get("consent") == "Yes"),
+        ("residence_type", lambda: "consent" in answered_set and answers.get("consent") == "Yes"),
+        ("age_first_marriage", lambda: answers.get("marital_status") not in (None, "Single")),
         ("sexual_activity", lambda: "age" in answered_set and answers.get("age") and str(answers.get("age")).replace(".", "", 1).isdigit() and int(float(answers.get("age"))) >= 13),
+        ("age_first_sex", lambda: answers.get("sexual_activity") == "Yes"),
         ("sexual_partners", lambda: answers.get("sexual_activity") == "Yes"),
         ("recent_partners", lambda: answers.get("sexual_activity") == "Yes"),
+        ("relationship_duration", lambda: answers.get("sexual_activity") == "Yes"),
+        ("partner_age_gap", lambda: answers.get("sexual_activity") == "Yes"),
         ("condom_use", lambda: answers.get("sexual_activity") == "Yes"),
         ("high_risk_partner", lambda: answers.get("sexual_activity") == "Yes"),
         ("transactional_sex", lambda: answers.get("sexual_activity") == "Yes"),
+        ("paid_for_sex", lambda: answers.get("sexual_activity") == "Yes"),
         ("multiple_partners", lambda: answers.get("sexual_activity") == "Yes"),
+        ("polygamous_relationship", lambda: answers.get("marital_status") == "Married"),
+        ("male_circumcision", lambda: answers.get("gender") in ["Male", "male"]),
         ("hiv_tested", lambda: True),
         ("last_hiv_test", lambda: answers.get("hiv_tested") == "Yes"),
+        ("hiv_test_frequency", lambda: True),
         ("other_sti_tests", lambda: True),
+        ("sti_test_frequency", lambda: True),
         ("willing_to_test", lambda: True),
         ("sti_symptoms", lambda: answers.get("sexual_activity") == "Yes"),
         ("discharge_symptom", lambda: answers.get("sti_symptoms") == "Yes"),
@@ -341,17 +407,24 @@ def get_smart_next_question(current_answers, available_questions, questions_df):
         ("partner_symptoms", lambda: answers.get("sti_symptoms") == "Yes"),
         ("previous_sti", lambda: answers.get("sexual_activity") == "Yes"),
         ("sti_treatment", lambda: answers.get("previous_sti") == "Yes"),
+        ("tb_history", lambda: True),
+        ("blood_transfusion_history", lambda: True),
+        ("needle_sharing", lambda: True),
         ("pregnancy_status", lambda: answers.get("gender") in ["Female", "female"] and answers.get("sexual_activity") == "Yes"),
         ("contraception_use", lambda: answers.get("gender") in ["Female", "female"] and answers.get("sexual_activity") == "Yes"),
         ("last_pap_smear", lambda: answers.get("gender") in ["Female", "female"] and answers.get("sexual_activity") == "Yes"),
         ("substance_sex", lambda: answers.get("sexual_activity") == "Yes"),
         ("alcohol_frequency", lambda: True),
         ("drug_use", lambda: True),
+        ("tobacco_use", lambda: True),
         ("sexual_coercion", lambda: answers.get("sexual_activity") == "Yes"),
+        ("intimate_partner_violence", lambda: True),
         ("partner_communication", lambda: answers.get("sexual_activity") == "Yes"),
         ("partner_testing", lambda: answers.get("sexual_activity") == "Yes"),
         ("partner_concurrency", lambda: answers.get("sexual_activity") == "Yes"),
+        ("migration_history", lambda: True),
         ("sti_knowledge", lambda: True),
+        ("hiv_knowledge_myths", lambda: True),
         ("prevention_methods", lambda: True),
         ("hiv_prep", lambda: True),
         ("health_priorities", lambda: True),
@@ -435,6 +508,15 @@ def build_profile_from_kenphia_row(row, questions_df):
     wealth_raw = row.get("wealthquintile")
     p["wealth_index"] = WEALTH_MAP.get(wealth_raw, RNG.choice(["Lower middle income", "Middle income", "Upper middle income"]))
 
+    residence_raw = row.get("residence")
+    p["residence_type"] = {1: "Urban", 2: "Rural"}.get(residence_raw, RNG.choice(["Urban", "Rural"], p=[0.3, 0.7]))
+
+    if p["marital_status"] != "Single":
+        firstmarr_raw = row.get("firstmarr")
+        p["age_first_marriage"] = int(firstmarr_raw) if pd.notna(firstmarr_raw) and firstmarr_raw > 0 else max(15, min(p["age"], int(RNG.integers(18, 28))))
+    else:
+        p["age_first_marriage"] = "N/A"
+
     lifetimesex = row.get("lifetimesex")
     has_lifetimesex = pd.notna(lifetimesex) and lifetimesex >= 0
     p["sexual_activity"] = "Yes" if (has_lifetimesex and lifetimesex >= 1) else ("No" if has_lifetimesex else RNG.choice(["Yes", "No"], p=[0.8, 0.2]))
@@ -444,11 +526,26 @@ def build_profile_from_kenphia_row(row, questions_df):
     part12 = row.get("part12monum")
     p["recent_partners"] = int(part12) if pd.notna(part12) and part12 >= 0 else min(p["sexual_partners"], 1)
 
+    if p["sexual_activity"] == "Yes":
+        firstsex_raw = row.get("firstsex")
+        p["age_first_sex"] = int(firstsex_raw) if pd.notna(firstsex_raw) and firstsex_raw > 0 else max(10, min(p["age"], int(RNG.integers(14, 22))))
+        p["relationship_duration"] = RNG.choice(["Less than 6 months", "6-12 months", "1-3 years", "3+ years"], p=[0.15, 0.15, 0.3, 0.4])
+        p["partner_age_gap"] = RNG.choice(["Same age or younger", "1-5 years older", "6-9 years older", "10+ years older"], p=[0.35, 0.4, 0.15, 0.1])
+    else:
+        p["age_first_sex"] = "N/A"
+        p["relationship_duration"] = "N/A"
+        p["partner_age_gap"] = "N/A"
+
     condom_raw = row.get("condomlastsex12months")
     p["condom_use"] = {1: "Sometimes", 2: "Never"}.get(condom_raw, RNG.choice(["Always", "Sometimes", "Never"], p=[0.3, 0.5, 0.2]))
 
     transact_raw = row.get("partlastsup1")
     p["transactional_sex"] = yn(transact_raw) or RNG.choice(["Yes", "No"], p=[0.05, 0.95])
+
+    if p["sexual_activity"] == "Yes":
+        p["paid_for_sex"] = yn(row.get("everpaidforsex")) or RNG.choice(["Yes", "No"], p=[0.05, 0.95])
+    else:
+        p["paid_for_sex"] = "N/A"
 
     is_female = p["gender"] == "Female"
     discharge_raw = row.get("vgdischarge") if is_female else row.get("pndschrg")
@@ -469,6 +566,15 @@ def build_profile_from_kenphia_row(row, questions_df):
     p["previous_sti"] = yn(row.get("eversyphilis")) or "No"
     p["sti_treatment"] = "Yes" if p["previous_sti"] == "Yes" else "No"
 
+    p["tb_history"] = yn(row.get("evertb")) or RNG.choice(["Yes", "No"], p=[0.05, 0.95])
+    p["blood_transfusion_history"] = yn(row.get("bloodtransfusion")) or RNG.choice(["Yes", "No"], p=[0.05, 0.95])
+    p["sti_test_frequency"] = RNG.choice(["Never", "Once", "Yearly", "More than once a year"], p=[0.3, 0.3, 0.25, 0.15])
+
+    if p["gender"] == "Male":
+        p["male_circumcision"] = yn(row.get("circum")) or RNG.choice(["Yes", "No"], p=[0.85, 0.15])
+    else:
+        p["male_circumcision"] = "N/A"
+
     p["hiv_tested"] = yn(row.get("evertested")) or RNG.choice(["Yes", "No"], p=[0.6, 0.4])
     if p["hiv_tested"] == "Yes":
         htm, hty = row.get("hivtestm"), row.get("hivtesty")
@@ -483,6 +589,11 @@ def build_profile_from_kenphia_row(row, questions_df):
     else:
         p["last_hiv_test"] = "Never tested"
 
+    if p["hiv_tested"] == "Yes":
+        p["hiv_test_frequency"] = RNG.choice(["Once", "Yearly", "More than once a year"], p=[0.3, 0.5, 0.2])
+    else:
+        p["hiv_test_frequency"] = "Never"
+
     if is_female and p["sexual_activity"] == "Yes":
         p["pregnancy_status"] = yn(row.get("pregnant")) or RNG.choice(["Yes", "No", "Not sure"], p=[0.15, 0.8, 0.05])
     else:
@@ -493,9 +604,14 @@ def build_profile_from_kenphia_row(row, questions_df):
     alc_raw = row.get("alcfreq")
     p["alcohol_frequency"] = ALCFREQ_MAP.get(alc_raw, RNG.choice(list(ALCFREQ_MAP.values())))
 
+    p["tobacco_use"] = yn(row.get("smokecig")) or RNG.choice(["Yes", "No"], p=[0.1, 0.9])
+    p["needle_sharing"] = yn(row.get("shareneedle")) or RNG.choice(["Yes", "No"], p=[0.03, 0.97])
+    p["migration_history"] = yn(row.get("awayhome")) or RNG.choice(["Yes", "No"], p=[0.2, 0.8])
+
     frcsx, cmplsx = row.get("frcsxtimes"), row.get("cmplsxtimes")
     coerced = (pd.notna(frcsx) and frcsx > 0) or (pd.notna(cmplsx) and cmplsx > 0)
     p["sexual_coercion"] = "Yes" if coerced else "No"
+    p["intimate_partner_violence"] = yn(row.get("ipv")) or RNG.choice(["Yes", "No"], p=[0.15, 0.85])
 
     parttest_raw = row.get("parthivtest1")
     p["partner_testing"] = {1: "Yes, and results were shared", 2: "No"}.get(parttest_raw, RNG.choice(["Yes, and results were shared", "Yes, but results not shared", "No", "Not sure"]))
@@ -504,6 +620,11 @@ def build_profile_from_kenphia_row(row, questions_df):
         p["partner_concurrency"] = yn(row.get("husotwif")) or RNG.choice(["Yes", "No", "Not sure"])
     else:
         p["partner_concurrency"] = RNG.choice(["Yes", "No", "Not sure"])
+
+    if p["marital_status"] == "Married":
+        p["polygamous_relationship"] = yn(row.get("cowife")) or RNG.choice(["Yes", "No"], p=[0.1, 0.9])
+    else:
+        p["polygamous_relationship"] = "N/A"
 
     p["hiv_prep"] = yn(row.get("prpevrhdr")) or RNG.choice(["Yes", "No"], p=[0.4, 0.6])
 
@@ -525,6 +646,7 @@ def build_profile_from_kenphia_row(row, questions_df):
     p["drug_use"] = RNG.choice(["Yes", "No"], p=[0.15, 0.85])
     p["partner_communication"] = RNG.choice(["Yes", "No"], p=[0.7, 0.3])
     p["sti_knowledge"] = RNG.choice(["Very knowledgeable", "Somewhat knowledgeable", "Not very knowledgeable", "Not knowledgeable at all"])
+    p["hiv_knowledge_myths"] = RNG.choice(["High comprehensive knowledge", "Some misconceptions", "Low knowledge"], p=[0.4, 0.4, 0.2])
     p["prevention_methods"] = RNG.choice(["Condoms", "Regular testing", "Pre-Exposure Prophylaxis (PrEP)", "Vaccines (HPV, Hepatitis B)", "Partner communication", "Monogamy"])
     p["health_priorities"] = RNG.choice(["Very important", "Somewhat important", "Not very important", "Not important at all"])
     p["insurance_coverage"] = RNG.choice(["Yes", "No"], p=[0.7, 0.3])
@@ -539,16 +661,40 @@ def build_profile_from_kenphia_row(row, questions_df):
     return p
 
 
+# Columns backing the original 26 grounded keys -- confirmed present in the file this
+# script was originally validated against.
+VERIFIED_USECOLS = [
+    "age", "gender", "curmar", "educationkenya", "wealthquintile",
+    "lifetimesex", "part12monum", "condomlastsex12months", "partlastsup1",
+    "vgdischarge", "pndschrg", "painurin", "vgsore", "pnsore",
+    "eversyphilis", "evertested", "hivtestm", "hivtesty",
+    "surveystmonth", "surveystyear", "pregnant", "partlastetoh1",
+    "alcfreq", "frcsxtimes", "cmplsxtimes", "parthivtest1", "husotwif",
+    "prpevrhdr", "hivtstlocation",
+]
+# Candidate columns for the 17 new question keys added in this expansion, following
+# standard DHS/PHIA naming conventions -- NOT independently confirmed against a real
+# KENPHIA_CSV export (unlike VERIFIED_USECOLS above). load_kenphia_respondents() only
+# requests whichever of these actually exist in the real file's header, so an unverified
+# guess never crashes the load -- it just means that key's profile falls back to the
+# synthetic generator in build_profile_from_kenphia_row(), same as the 18 original
+# ungrounded keys. Check the real CSV header and correct these names if they don't match.
+CANDIDATE_NEW_USECOLS = [
+    "residence", "firstsex", "circum", "shareneedle", "bloodtransfusion",
+    "evertb", "awayhome", "ipv", "smokecig", "firstmarr", "cowife", "everpaidforsex",
+]
+
+
 def load_kenphia_respondents():
-    usecols = [
-        "age", "gender", "curmar", "educationkenya", "wealthquintile",
-        "lifetimesex", "part12monum", "condomlastsex12months", "partlastsup1",
-        "vgdischarge", "pndschrg", "painurin", "vgsore", "pnsore",
-        "eversyphilis", "evertested", "hivtestm", "hivtesty",
-        "surveystmonth", "surveystyear", "pregnant", "partlastetoh1",
-        "alcfreq", "frcsxtimes", "cmplsxtimes", "parthivtest1", "husotwif",
-        "prpevrhdr", "hivtstlocation",
-    ]
+    header_cols = set(pd.read_csv(KENPHIA_CSV, nrows=0).columns)
+    candidate_cols = VERIFIED_USECOLS + CANDIDATE_NEW_USECOLS
+    usecols = [c for c in candidate_cols if c in header_cols]
+    missing_new = [c for c in CANDIDATE_NEW_USECOLS if c not in header_cols]
+    if missing_new:
+        logger.warning(
+            f"KENPHIA_CSV is missing {len(missing_new)} candidate column(s) for the new "
+            f"question keys (falling back to synthetic generation for those): {missing_new}"
+        )
     df = pd.read_csv(KENPHIA_CSV, usecols=usecols, low_memory=False)
     logger.info(f"Loaded {len(df)} real KENPHIA adult respondents for profile grounding")
     if KENPHIA_SAMPLE and len(df) > KENPHIA_SAMPLE:
@@ -679,6 +825,20 @@ def main():
         "substance_sex", "alcohol_frequency", "sexual_coercion", "partner_testing",
         "partner_concurrency", "hiv_prep", "preferred_testing",
     ]
+    # New-question-key -> candidate KENPHIA column, only counted as grounded if that
+    # column actually made it into respondents_df (i.e. was present in the real CSV
+    # header -- see load_kenphia_respondents/CANDIDATE_NEW_USECOLS).
+    new_key_candidate_column = {
+        "residence_type": "residence", "age_first_marriage": "firstmarr",
+        "age_first_sex": "firstsex", "male_circumcision": "circum",
+        "needle_sharing": "shareneedle", "blood_transfusion_history": "bloodtransfusion",
+        "tb_history": "evertb", "migration_history": "awayhome",
+        "intimate_partner_violence": "ipv", "tobacco_use": "smokecig",
+        "polygamous_relationship": "cowife", "paid_for_sex": "everpaidforsex",
+    }
+    for key, column in new_key_candidate_column.items():
+        if column in respondents_df.columns:
+            grounded_keys.append(key)
     kenphia_source_column = {
         "age": "age", "gender": "gender", "marital_status": "curmar", "education": "educationkenya",
         "wealth_index": "wealthquintile", "sexual_activity": "lifetimesex (>=1)",
@@ -694,6 +854,9 @@ def main():
         "partner_testing": "parthivtest1", "partner_concurrency": "husotwif (female respondents only)",
         "hiv_prep": "prpevrhdr", "preferred_testing": "hivtstlocation (approximate category passthrough)",
     }
+    kenphia_source_column.update({
+        key: new_key_candidate_column[key] for key in new_key_candidate_column if key in grounded_keys
+    })
     questions_records = questions_df.to_dict("records")
     metadata = {
         "questions": [
@@ -702,12 +865,15 @@ def main():
             for q in questions_records
         ],
         "note": (
-            "26 of 44 question keys are grounded in real KENPHIA 2018 adult "
-            "respondent answers; the rest use the original synthetic "
-            "generators from create_comprehensive_model.py (no confident "
-            "KENPHIA equivalent found). Marital status and education codes "
-            "assume the standard DHS/PHIA convention -- this .dta file ships "
-            "no value-label metadata to confirm against directly."
+            f"{len(grounded_keys)} of {len(question_keys)} question keys are grounded in "
+            "real KENPHIA 2018 adult respondent answers; the rest use synthetic random "
+            "generators (no confident KENPHIA equivalent column found/present in this "
+            "run's KENPHIA_CSV). Marital status and education codes assume the standard "
+            "DHS/PHIA convention -- this .dta file ships no value-label metadata to "
+            "confirm against directly. The 17-question expansion's candidate columns "
+            "(see CANDIDATE_NEW_USECOLS) were verified only by presence in this run's "
+            "actual KENPHIA_CSV header, not against value-label metadata -- double check "
+            "the encoded value distributions look sane before trusting them fully."
         ),
     }
     with open(OUT_METADATA_PATH, "w", encoding="utf-8") as f:
