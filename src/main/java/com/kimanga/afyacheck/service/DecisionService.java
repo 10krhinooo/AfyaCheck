@@ -24,7 +24,11 @@ public class DecisionService {
     private static final List<String> ML_REQUIRED_FIELDS = List.of(
             "age", "gender", "sexual_activity", "marital_status", "education",
             "wealth_index", "hiv_tested", "sexual_partners", "condom_use",
-            "recent_partners", "high_risk_partner", "sti_symptoms", "previous_sti", "transactional_sex"
+            "recent_partners", "high_risk_partner", "sti_symptoms", "previous_sti", "transactional_sex",
+            // residence_type feeds ml-service's already-existing but previously-unused
+            // urban/residence crosswalk field (see build_kenphia_feature_row in ml-service/app.py) --
+            // wiring it here improves the existing model's prediction with no retraining needed.
+            "residence_type"
     );
 
     private final DecisionTreeClient decisionTreeClient;
@@ -107,6 +111,10 @@ public class DecisionService {
         if ("Yes".equals(answers.get("sti_symptoms"))) score += 15;
         if ("Yes".equals(answers.get("previous_sti"))) score += 10;
         if ("Yes".equals(answers.get("transactional_sex"))) score += 25;
+        // Additional well-documented risk factors, used only in degraded mode (ml-service
+        // unreachable) so the rule-based fallback stays informed by more than a handful of keys.
+        if ("Yes".equals(answers.get("needle_sharing"))) score += 20;
+        if ("No".equals(answers.get("male_circumcision"))) score += 5;
 
         return Math.min(score, 100);
     }
@@ -467,6 +475,9 @@ public class DecisionService {
 
             case "wealth_index":
                 return "Middle income";
+
+            case "residence_type":
+                return "Urban";
 
             // Sexual behavior fields - default to ABSOLUTE LOWEST RISK when unknown
             case "sexual_partners":

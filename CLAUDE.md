@@ -177,12 +177,14 @@ the Python model expects; actual encoding/inference happens on the Python side. 
 
 ### Database
 
-Flyway migrations live in `src/main/resources/db/migration/` (`V1` through `V10` currently:
+Flyway migrations live in `src/main/resources/db/migration/` (`V1` through `V14` currently:
 baseline schema, seed data, Keycloak ID linkage, legacy-questionnaire cleanup, admin audit log,
 the `health_center` table, `risk_assessment.model_version`, Swahili question translation columns,
-the `retest_reminder` table, and the question-key/question-bank alignment described in Decision
-tree model below). `spring.jpa.hibernate.ddl-auto=validate`, so schema changes go through new
-Flyway migrations, not Hibernate auto-DDL.
+the `retest_reminder` table, the question-key/question-bank alignment described in Decision tree
+model below, a health-center blacklist, the `age` question's minimum value, a partner-count
+question label fix, and a second question-bank expansion (V14, 17 more KENPHIA-grounded
+questions, see below)). `spring.jpa.hibernate.ddl-auto=validate`, so schema changes go through
+new Flyway migrations, not Hibernate auto-DDL.
 
 ### Decision tree model
 
@@ -190,11 +192,18 @@ Flyway migrations, not Hibernate auto-DDL.
 respondent profiles from the KENPHIA 2018 household survey (`KENPHIA_CSV` env var points at a
 column-subset CSV built from the raw `.dta` files; `KENPHIA_SAMPLE` optionally caps the number of
 respondents used to simulate sessions, since the full ~42k-respondent run needs more memory than
-a typical dev machine has). The model's 44 question keys must match what the DB seeds in
-`question`: V10 renamed the mismatched `hiv_test` key to `hiv_tested` (the model, training data,
-and `DecisionService`'s risk logic all use `hiv_tested`, so the old key's answer never reached the
-model) and added the 17 question keys the model expected but the DB never seeded. Keep the DB
-question bank and the training script's question keys in sync when either changes.
+a typical dev machine has). The model's 61 question keys (44 originally, expanded by V14 with 17
+more KENPHIA-grounded questions covering residence, sexual debut/marriage age, circumcision,
+partner age gap, needle sharing, TB/transfusion history, migration, IPV, tobacco, polygamy, and
+testing frequency) must match what the DB seeds in `question`: V10 renamed the mismatched
+`hiv_test` key to `hiv_tested` (the model, training data, and `DecisionService`'s risk logic all
+use `hiv_tested`, so the old key's answer never reached the model) and added the 17 question keys
+the model expected but the DB never seeded. Keep the DB question bank, the training script's
+`get_questions_data()`, and `decision_tree_service.py`'s mirrored flow/encoding logic in sync when
+any of them change — the training script and the live service duplicate the question-flow,
+relevance, and answer-encoding logic rather than sharing it, so a key added to one must be added
+to all three by hand (see the training script's module docstring for the current grounded-vs-
+synthetic KENPHIA-column mapping).
 
 ### Model versioning
 
