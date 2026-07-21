@@ -23,7 +23,9 @@
     "tryAgain": "Jaribu tena",
     "startError": "Hatukuweza kupakia tathmini yako. Angalia muunganisho wako kisha ujaribu tena.",
     "submitError": "Hatukuweza kuhifadhi jibu lako. Angalia muunganisho wako kisha ujaribu tena.",
-    "backError": "Hatukuweza kurudi kwenye swali lililopita. Angalia muunganisho wako kisha ujaribu tena."
+    "backError": "Hatukuweza kurudi kwenye swali lililopita. Angalia muunganisho wako kisha ujaribu tena.",
+    "consentDeniedTitle": "Hakuna tathmini iliyofanywa",
+    "consentDeniedCta": "Rudi nyumbani"
   },
   "results": {
     "loading": "Inapakia matokeo yako…",
@@ -44,6 +46,7 @@
     "sendError": "Hatukuweza kutuma. Tafadhali jaribu tena.",
     "yourData": "Data yako",
     "yourDataHint": "Pakua nakala ya majibu na matokeo ya tathmini hii, au yafute kabisa.",
+    "downloadPdf": "Pakua kama PDF",
     "download": "Pakua data yangu",
     "downloadError": "Hatukuweza kupakua data yako. Tafadhali jaribu tena.",
     "delete": "Futa data yangu",
